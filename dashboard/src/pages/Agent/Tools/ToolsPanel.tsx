@@ -6,43 +6,6 @@ import {
   type CSSProperties,
 } from "react";
 import { Empty, Segmented, Spin, Switch, Tooltip } from "antd";
-import type { LucideIcon } from "lucide-react";
-import {
-  AppWindow,
-  BookOpen,
-  Brain,
-  CalendarClock,
-  Clock,
-  Code2,
-  Eye,
-  FileKey,
-  FilePen,
-  FileSearch,
-  FileText,
-  Folder,
-  Globe,
-  Handshake,
-  Image,
-  Library,
-  ListChecks,
-  ListTodo,
-  MessageCircle,
-  Monitor,
-  MousePointerClick,
-  Move,
-  Pencil,
-  Play,
-  Plug,
-  Plus,
-  Search,
-  Send,
-  Smartphone,
-  SquareTerminal,
-  Trash2,
-  Users,
-  Video,
-  Wrench,
-} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { message } from "@/utils/antdMessage";
 import {
@@ -50,6 +13,7 @@ import {
   type ToolSettingsItem,
 } from "../../../api/modules/agentTools";
 import { pluginsApi, type AgentPlugin } from "../../../api/modules/plugins";
+import { builtinToolIcon } from "../../../utils/builtinToolIcons";
 import { PluginIconView } from "../../Admin/Plugins/PluginIconView";
 import { PluginGroupTag } from "../../Admin/Plugins/PluginGroupTag";
 import {
@@ -90,50 +54,6 @@ const CATEGORY_ACCENT: Record<string, string> = {
   misc: "#64748B",
 };
 
-const TOOL_ICONS: Record<string, LucideIcon> = {
-  ls: Folder,
-  read_file: FileSearch,
-  write_file: FilePen,
-  edit_file: Pencil,
-  glob: Search,
-  grep: FileText,
-  execute: SquareTerminal,
-  write_todos: ListTodo,
-  task: Users,
-  current_time: Clock,
-  web_fetch: Globe,
-  browser_use: AppWindow,
-  desktop_screenshot: Monitor,
-  send_file_to_user: Send,
-  read_env_file: FileKey,
-  write_env_file: FileKey,
-  tavily_search: Search,
-  brave_search: Search,
-  google_search: Search,
-  kimi_search: Search,
-  searchfree_search: Search,
-  generate_image: Image,
-  generate_video: Video,
-  memory_search: Brain,
-  memory_get: BookOpen,
-  acp_runner: Plug,
-  cronjob_list: ListChecks,
-  cronjob_get: Eye,
-  cronjob_create: Plus,
-  cronjob_update: CalendarClock,
-  cronjob_delete: Trash2,
-  cronjob_run_now: Play,
-  search_knowledge: Library,
-  mobile_screenshot: Smartphone,
-  mobile_tap: MousePointerClick,
-  mobile_swipe: Move,
-  mobile_launch_app: AppWindow,
-  mobile_ui_dump: Code2,
-  mobile_handoff_to_user: Handshake,
-  agent_list: Users,
-  ask_agent: MessageCircle,
-};
-
 type PluginMeta = {
   name: string;
   icon: string | null;
@@ -145,10 +65,6 @@ function toolKey(tool: ToolSettingsItem): string {
   return tool.source === "plugin"
     ? `plugin:${tool.plugin_id ?? ""}:${tool.name}`
     : `builtin:${tool.name}`;
-}
-
-function toolIcon(tool: ToolSettingsItem): LucideIcon {
-  return TOOL_ICONS[tool.name] ?? Wrench;
 }
 
 /** Prefer API label, else a short phrase from description (not snake_case id). */
@@ -564,7 +480,7 @@ export default function ToolsPanel({
                 const key = toolKey(tool);
                 const accent =
                   CATEGORY_ACCENT[tool.category] ?? CATEGORY_ACCENT.misc;
-                const Icon = toolIcon(tool);
+                const Icon = builtinToolIcon(tool.name);
                 return (
                   <div
                     key={key}
