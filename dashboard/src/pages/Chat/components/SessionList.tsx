@@ -9,6 +9,7 @@ import {
   Trash2,
   Pin,
   PinOff,
+  MessageSquarePlus,
   Search,
   GitFork,
 } from "lucide-react";
@@ -216,6 +217,7 @@ interface AgentCardProps {
   onLoadMore: () => void;
   onFetchAllSessions: () => void;
   onSelect: (sessionId: string, agentId: string) => void;
+  onNewChat: (agentId: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onPin: (id: string, pinned: boolean) => void;
@@ -234,6 +236,7 @@ function ActiveAgentCard({
   onLoadMore,
   onFetchAllSessions,
   onSelect,
+  onNewChat,
   onDelete,
   onRename,
   onPin,
@@ -295,6 +298,18 @@ function ActiveAgentCard({
               <SharedExpertHint agent={agent} />
             </div>
             <AgentUnreadBadge count={agent.unread_count ?? 0} />
+            <button
+              type="button"
+              className={styles.agentNewChatBtn}
+              aria-label={t("chatWelcome.newChat")}
+              title={t("chatWelcome.newChat")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNewChat(agent.agent_id);
+              }}
+            >
+              <MessageSquarePlus size={14} strokeWidth={1.75} aria-hidden />
+            </button>
           </div>
           {agent.description ? (
             <div className={styles.agentCardDesc}>{agent.description}</div>
@@ -361,13 +376,26 @@ function ActiveAgentCard({
 interface AgentRowProps {
   agent: OctopAgent;
   onSelect: () => void;
+  onNewChat: () => void;
 }
 
-function InactiveAgentRow({ agent, onSelect }: AgentRowProps) {
+function InactiveAgentRow({ agent, onSelect, onNewChat }: AgentRowProps) {
+  const { t } = useTranslation();
   const accent = agent.color || "#6366f1";
 
   return (
-    <button type="button" className={styles.agentRow} onClick={onSelect}>
+    <div
+      className={styles.agentRow}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
       <div
         className={styles.agentRowAvatar}
         style={{ color: accent, background: `${accent}12` }}
@@ -385,10 +413,22 @@ function InactiveAgentRow({ agent, onSelect }: AgentRowProps) {
             <SharedExpertHint agent={agent} />
           </div>
           <AgentUnreadBadge count={agent.unread_count ?? 0} />
+          <button
+            type="button"
+            className={styles.agentNewChatBtn}
+            aria-label={t("chatWelcome.newChat")}
+            title={t("chatWelcome.newChat")}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNewChat();
+            }}
+          >
+            <MessageSquarePlus size={14} strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
         <div className={styles.agentRowDesc}>{agent.description || "—"}</div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -403,6 +443,7 @@ interface SessionListProps {
   onFetchAllSessions: () => void;
   onSelect: (sessionId: string, agentId: string) => void;
   onAgentSelect: (agentId: string) => void;
+  onNewChat: (agentId: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onPin: (id: string, pinned: boolean) => void;
@@ -422,6 +463,7 @@ export default function SessionList({
   onFetchAllSessions,
   onSelect,
   onAgentSelect,
+  onNewChat,
   onDelete,
   onRename,
   onPin,
@@ -498,6 +540,7 @@ export default function SessionList({
                   onLoadMore={onLoadMore}
                   onFetchAllSessions={onFetchAllSessions}
                   onSelect={onSelect}
+                  onNewChat={onNewChat}
                   onDelete={onDelete}
                   onRename={onRename}
                   onPin={onPin}
@@ -512,6 +555,7 @@ export default function SessionList({
                 key={agent.agent_id}
                 agent={agent}
                 onSelect={() => onAgentSelect(agent.agent_id)}
+                onNewChat={() => onNewChat(agent.agent_id)}
               />
             );
           })}

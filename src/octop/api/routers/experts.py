@@ -63,7 +63,7 @@ from octop.infra.agents.experts.skillhub_market import (
     fetch_skillset,
 )
 from octop.infra.errors import ErrorCode, OctopError
-from octop.infra.trajectory.settings import apply_enable_trajectory
+from octop.infra.history.trajectory.settings import apply_enable_trajectory
 from octop.infra.utils.locale import resolve_user_locale
 
 router = APIRouter()

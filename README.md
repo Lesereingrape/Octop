@@ -41,7 +41,7 @@
 
 **Octop** is an open-source, self-hosted AI assistant. It's not just a tool — it's a digital life form that can operate in parallel. Through its multi-agent architecture, it builds an intelligent environment that is both independent and collaborative for teams, families, and individuals. Best of all, it runs entirely on your machine — the fully self-hosted design means privacy is never a compromise, while single-process startup makes the powerful web console, CLI, and IM integrations readily accessible.
 
-Chat through the Web Dashboard, Feishu, DingTalk, QQ, Discord, WeCom, or programmatic HTTP/SSE/WebSocket. Extend capabilities with the **expert library**, **Connectors** (OAuth + MCP), and **ACP** integration for IDE workflows.
+Chat through the Web Dashboard, Feishu, DingTalk, QQ, Telegram, WeCom, or programmatic HTTP/SSE/WebSocket. Extend capabilities with the **expert library**, **Connectors** (OAuth + MCP), and **ACP** integration for IDE workflows.
 
 ## ✨ Highlights
 
@@ -63,7 +63,7 @@ Chat through the Web Dashboard, Feishu, DingTalk, QQ, Discord, WeCom, or program
 
 ## 📌 Overview
 
-Octop is a self-hosted AI assistant platform for households and small teams. It runs a single process that serves a web dashboard, a CLI, IM channels (Feishu, DingTalk, QQ, Discord, WeCom, and more), and cron automation — all sharing one control-plane database under `~/.octop/` (SQLite by default; PostgreSQL optional).
+Octop is a self-hosted AI assistant platform for households and small teams. It runs a single process that serves a web dashboard, a CLI, IM channels (Feishu, DingTalk, QQ, Telegram, WeCom, and more), and cron automation — all sharing one control-plane database under `~/.octop/` (SQLite by default; PostgreSQL optional).
 
 > Octop's design goal: keep every conversation, workspace, and credential on your own machine, while giving each user a personal team of specialized agents they can switch between per task.
 
@@ -116,7 +116,7 @@ Instead of an external queue or message broker, Octop routes every surface — W
 - Workspace backends: local disk, COS, S3, and other remote stores
 
 ### Channels & automation
-- IM channels: Feishu, DingTalk, QQ, Discord, WeCom, and more
+- IM channels: Feishu, DingTalk, QQ, Telegram, WeCom, and more
 - Proactive cron jobs with natural-language and slash-command triggers
 - Unified message processing across Web UI, IM, and cron surfaces
 
@@ -370,7 +370,7 @@ OpenAI-compatible APIs, DashScope (Qwen), Ollama, and other presets — configur
 | **Feishu** | App ID, App Secret |
 | **DingTalk** | App Key, App Secret |
 | **QQ** | Bot AppID, Token |
-| **Discord** | Bot Token |
+| **Telegram** | Bot Token |
 | **WeCom** | Corp ID, Agent Secret |
 | **Web Dashboard** | Enabled by default |
 

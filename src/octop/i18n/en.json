@@ -521,7 +521,8 @@
     "write_env_file": "Write env file",
     "ask_user_question": "Ask the user",
     "generate_image": "Generate image",
-    "generate_video": "Generate video"
+    "generate_video": "Generate video",
+    "bilibili_search_anime": "Search Bilibili anime"
   },
   "skills": {
     "pdf": "PDF",

@@ -22,7 +22,7 @@ from octop.infra.agents.experts.skillhub_market import (
     skillhub_portrait_url,
 )
 from octop.infra.errors import ErrorCode, OctopError
-from octop.infra.trajectory.settings import apply_enable_trajectory
+from octop.infra.history.trajectory.settings import apply_enable_trajectory
 from octop.infra.utils.locale import resolve_user_locale
 
 logger = logging.getLogger(__name__)
