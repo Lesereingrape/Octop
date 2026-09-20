@@ -290,6 +290,14 @@ def test_peer_session_key_rewrites_agent_segment() -> None:
     out = ThreadRegistry.peer_session_key(src, "a2")
     assert out == "a2:dashboard:7:dm"
     assert ThreadRegistry.peer_session_key("not-a-key", "a2") is None
+    room = ThreadRegistry.peer_room_session_key(src, "a2", room_thread_id="thr_room", group=True)
+    assert room == "a2:dashboard:7:team:thr_room"
+    peer = ThreadRegistry.peer_room_session_key(src, "a2", room_thread_id="thr_room", group=False)
+    assert peer == "a2:dashboard:7:peer:thr_room"
+    assert (
+        ThreadRegistry.peer_room_session_key("not-a-key", "a2", room_thread_id="t", group=True)
+        is None
+    )
 
 
 @pytest.mark.asyncio

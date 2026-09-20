@@ -46,6 +46,30 @@ class ThreadRegistry:
         )
 
     @staticmethod
+    def peer_room_session_key(
+        source_session_key: str,
+        agent_id: str,
+        *,
+        room_thread_id: str,
+        group: bool,
+    ) -> str | None:
+        """Session for a peer thread that must not collide with the callee's 1:1 DM."""
+        parts = source_session_key.split(":", 3)
+        if len(parts) != 4:
+            return None
+        _src_agent, channel_type, subject_id, _chat = parts
+        room = room_thread_id.strip()
+        if not channel_type or not subject_id or not room:
+            return None
+        kind = "team" if group else "peer"
+        return ThreadRegistry.make_key(
+            agent_id=agent_id,
+            channel_type=channel_type,
+            channel_subject_id=subject_id,
+            channel_chat_type=f"{kind}:{room}",
+        )
+
+    @staticmethod
     def dashboard_key(*, agent_id: str, user_id: int) -> str:
         return ThreadRegistry.make_key(
             agent_id=agent_id,
