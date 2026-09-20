@@ -2,7 +2,7 @@
 
 ## 用户命令与表现
 
-升级本次 Octop 和配套 harness-memory 代码，重启 Octop 一次加载控制入口。之后每次整理无需停服：
+升级本次 Octop 和 harness-memory 0.9.11 或更新版本，重启 Octop 一次加载控制入口。之后每次整理无需停服：
 
 ```bash
 octop memory list             # 只看可整理的智能体名称和 ID，不触发维护
