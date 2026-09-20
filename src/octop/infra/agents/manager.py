@@ -27,6 +27,7 @@ from octop.infra.agents.media_generation import (
     MediaGenerationSettingsStore,
 )
 from octop.infra.agents.memory_backend import memory_backend_from_agent_config
+from octop.infra.agents.memory_slim import MemorySlimCoordinator
 from octop.infra.agents.profile import (
     dump_id_list,
     dump_skill_package_ids,
@@ -345,6 +346,7 @@ class AgentManager:
         self._proactive_scheduler: ProactiveCareScheduler | None = None
         self._team_processor: Any | None = None
         self._harness_manager: HarnessAgentManager | None = None
+        self.memory_slim = MemorySlimCoordinator(self)
         self._lock = asyncio.Lock()
         self._active_invocations: dict[str, int] = {}
         self._invocation_waiters: dict[str, int] = {}
@@ -447,6 +449,7 @@ class AgentManager:
             await self._start_agent(row)
 
     async def shutdown(self) -> None:
+        await self.memory_slim.close()
         async with self._lock:
             if self._harness_manager:
                 try:

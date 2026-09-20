@@ -207,6 +207,7 @@ function ChatPageInner() {
     status: memoryMaint,
     visible: memoryMaintVisible,
     blocking: memoryMaintBlocking,
+    connectionLost: memoryMaintConnectionLost,
   } = useMemoryMaintenance(resolvedAgentId, agentChatReady && !noAgents);
   const historyMigration = useHistoryMigration(
     resolvedAgentId,
@@ -1069,6 +1070,7 @@ function ChatPageInner() {
               <MemoryMaintenanceBanner
                 status={memoryMaint}
                 blocking={memoryMaintBlocking}
+                connectionLost={memoryMaintConnectionLost}
               />
             )}
 
