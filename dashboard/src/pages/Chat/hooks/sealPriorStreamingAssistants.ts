@@ -21,7 +21,12 @@ export function sealPriorStreamingAssistants(
   const next = messages.map((m) => {
     if (m.role === "assistant" && m.status === "streaming" && !m.toolData) {
       if (
-        !sameStreamingSpeaker(m.speakerAgentId, speakerId, hostAgentId, teamRoom)
+        !sameStreamingSpeaker(
+          m.speakerAgentId,
+          speakerId,
+          hostAgentId,
+          teamRoom,
+        )
       )
         return m;
       changed = true;

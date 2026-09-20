@@ -53,7 +53,9 @@ describe("team member live stream", () => {
     const hostText = messages.find(
       (item) => item.content.includes("I will ask") && !item.speakerAgentId,
     );
-    const hostTool = messages.find((item) => item.toolData?.name === "ask_agent");
+    const hostTool = messages.find(
+      (item) => item.toolData?.name === "ask_agent",
+    );
     const memberThink = messages.find(
       (item) =>
         item.speakerAgentId === "doctor" &&
@@ -64,7 +66,9 @@ describe("team member live stream", () => {
         item.speakerAgentId === "doctor" && item.toolData?.name === "read_file",
     );
     const memberText = messages.find(
-      (item) => item.speakerAgentId === "doctor" && item.content.includes("please rest"),
+      (item) =>
+        item.speakerAgentId === "doctor" &&
+        item.content.includes("please rest"),
     );
 
     expect(hostText?.content).toContain("I will ask");
@@ -75,9 +79,9 @@ describe("team member live stream", () => {
     });
     expect(memberTool?.toolData?.name).toBe("read_file");
     expect(memberText?.content).toBe("please rest");
-    expect(hostText?.contentBlocks?.some((block) => block.type === "thinking")).not.toBe(
-      true,
-    );
+    expect(
+      hostText?.contentBlocks?.some((block) => block.type === "thinking"),
+    ).not.toBe(true);
   });
 
   it("keeps host text on one bubble across ask_agent", () => {
@@ -123,7 +127,9 @@ describe("team member live stream", () => {
     ingestHarnessChunk(SESSION, { type: "done", agent_id: "doctor" });
 
     const { messages, isStreaming } = getSnapshot(SESSION);
-    const host = messages.find((item) => item.content.includes("host still talking"));
+    const host = messages.find((item) =>
+      item.content.includes("host still talking"),
+    );
     const member = messages.find((item) => item.speakerAgentId === "doctor");
     expect(host?.status).toBe("streaming");
     expect(member?.status).toBe("done");
@@ -142,7 +148,8 @@ describe("team member live stream", () => {
     expect(
       messages.some(
         (item) =>
-          item.speakerAgentId === "doctor" && item.content.includes("please rest"),
+          item.speakerAgentId === "doctor" &&
+          item.content.includes("please rest"),
       ),
     ).toBe(true);
   });
@@ -264,7 +271,11 @@ describe("team member live stream", () => {
     });
     ingestHarnessChunk(
       SESSION,
-      { type: "token", content: "临床辅助专家为您解答，稍等片刻。", agent_id: "host" },
+      {
+        type: "token",
+        content: "临床辅助专家为您解答，稍等片刻。",
+        agent_id: "host",
+      },
       "host",
     );
     ingestHarnessChunk(SESSION, {
@@ -273,7 +284,9 @@ describe("team member live stream", () => {
       agent_id: "doctor",
     });
     const { messages } = getSnapshot(SESSION);
-    const host = messages.filter((item) => item.speakerAgentId === "host" && !item.toolData);
+    const host = messages.filter(
+      (item) => item.speakerAgentId === "host" && !item.toolData,
+    );
     const member = messages.filter((item) => item.speakerAgentId === "doctor");
     expect(host.map((item) => item.content).join("")).toBe(
       "已安排临床辅助专家为您解答，稍等片刻。",
@@ -287,7 +300,11 @@ describe("team member live stream", () => {
   it("does not merge unlabeled tokens onto a stamped host bubble", () => {
     ingestHarnessChunk(
       SESSION,
-      { type: "token", content: "已安排临床辅助专家为您解答，稍等片刻。", agent_id: "host" },
+      {
+        type: "token",
+        content: "已安排临床辅助专家为您解答，稍等片刻。",
+        agent_id: "host",
+      },
       "host",
     );
     ingestHarnessChunk(SESSION, {
@@ -297,9 +314,9 @@ describe("team member live stream", () => {
     const { messages } = getSnapshot(SESSION);
     const assistants = messages.filter((item) => item.role === "assistant");
     expect(assistants).toHaveLength(2);
-    expect(assistants.find((item) => item.speakerAgentId === "host")?.content).toBe(
-      "已安排临床辅助专家为您解答，稍等片刻。",
-    );
+    expect(
+      assistants.find((item) => item.speakerAgentId === "host")?.content,
+    ).toBe("已安排临床辅助专家为您解答，稍等片刻。");
     expect(assistants.find((item) => !item.speakerAgentId)?.content).toBe(
       "这是一个医学知识问题，我可以直接回答",
     );
@@ -404,7 +421,11 @@ describe("team member live stream", () => {
   it("keeps wrap-up off the dispatch bubble even while the host is still streaming", () => {
     ingestHarnessChunk(
       SESSION,
-      { type: "token", content: "已派给临床辅助专家，稍等片刻。", agent_id: "host" },
+      {
+        type: "token",
+        content: "已派给临床辅助专家，稍等片刻。",
+        agent_id: "host",
+      },
       "host",
     );
     ingestHarnessChunk(
@@ -538,7 +559,11 @@ describe("team member live stream", () => {
   it("does not reopen a sealed host bubble after ask_agent completes", () => {
     ingestHarnessChunk(
       SESSION,
-      { type: "token", content: "已派给临床辅助专家，稍等片刻。", agent_id: "host" },
+      {
+        type: "token",
+        content: "已派给临床辅助专家，稍等片刻。",
+        agent_id: "host",
+      },
       "host",
     );
     ingestHarnessChunk(
@@ -578,7 +603,11 @@ describe("team member live stream", () => {
   it("does not seal dispatch when a wrap-up done arrives", () => {
     ingestHarnessChunk(
       SESSION,
-      { type: "token", content: "已派给临床辅助专家，稍等片刻。", agent_id: "host" },
+      {
+        type: "token",
+        content: "已派给临床辅助专家，稍等片刻。",
+        agent_id: "host",
+      },
       "host",
     );
     ingestHarnessChunk(

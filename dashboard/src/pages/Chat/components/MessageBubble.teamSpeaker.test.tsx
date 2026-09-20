@@ -89,7 +89,9 @@ describe("MessageBubble team speaker chrome", () => {
         />
       </ChatAgentProfileProvider>,
     );
-    expect(screen.getByRole("button", { name: "[主持团队] 主持人" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "[主持团队] 主持人" }),
+    ).toBeInTheDocument();
 
     rerender(
       <ChatAgentProfileProvider canOpen onOpen={onOpen} isTeam>

@@ -472,9 +472,7 @@ function convertCallEntries(entries: CallEntry[]): ChatMessage[] {
         entry.speaker_agent_id.trim()
           ? entry.speaker_agent_id.trim()
           : undefined,
-      teamWrapup: Boolean(
-        (entry as { team_wrapup?: boolean }).team_wrapup,
-      ),
+      teamWrapup: Boolean((entry as { team_wrapup?: boolean }).team_wrapup),
     };
   });
 
@@ -694,9 +692,7 @@ export function convertHistoryMessages(
   const converted = convertCallEntries(entries).filter(
     isDisplayableHistoryMessage,
   );
-  return agentId
-    ? enrichAttachmentPreviewUrls(converted, agentId)
-    : converted;
+  return agentId ? enrichAttachmentPreviewUrls(converted, agentId) : converted;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

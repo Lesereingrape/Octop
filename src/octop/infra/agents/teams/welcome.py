@@ -40,8 +40,10 @@ def _prompt_cards(payload: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def _card_key(card: dict[str, Any]) -> tuple[str, str, str, str]:
-    title = card.get("title") if isinstance(card.get("title"), dict) else {}
-    prompt = card.get("prompt") if isinstance(card.get("prompt"), dict) else {}
+    title_raw = card.get("title")
+    prompt_raw = card.get("prompt")
+    title: dict[str, Any] = title_raw if isinstance(title_raw, dict) else {}
+    prompt: dict[str, Any] = prompt_raw if isinstance(prompt_raw, dict) else {}
     return (
         str(title.get("zh") or "").strip(),
         str(title.get("en") or "").strip(),

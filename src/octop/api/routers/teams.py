@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -63,7 +63,7 @@ async def list_teams(
     user: Any = Depends(current_user),
     server: Any = Depends(get_server),
 ) -> list[dict[str, Any]]:
-    return _teams(server).list_for_user(user.id)
+    return cast(list[dict[str, Any]], _teams(server).list_for_user(user.id))
 
 
 @router.post("/teams", summary="Create an expert team")
@@ -91,7 +91,10 @@ async def create_team(
         mcp_servers=[],
     )
     row = await server.app_runtime.agent_registry.create(spec)
-    return teams.team_payload(server.app_runtime.agent_registry.get_row(row.agent_id) or row)
+    return cast(
+        dict[str, Any],
+        teams.team_payload(server.app_runtime.agent_registry.get_row(row.agent_id) or row),
+    )
 
 
 @router.get("/teams/template", summary="Preview default team workspace files")
@@ -118,7 +121,7 @@ async def get_team(
     server: Any = Depends(get_server),
 ) -> dict[str, Any]:
     row = _require_owned_team(server, user, team_id)
-    return _teams(server).team_payload(row)
+    return cast(dict[str, Any], _teams(server).team_payload(row))
 
 
 @router.patch("/teams/{team_id}", summary="Update an expert team")
@@ -157,7 +160,7 @@ async def patch_team(
     row = server.app_runtime.agent_registry.get_row(team_id)
     if row is None:
         raise OctopError(ErrorCode.TEAM_NOT_FOUND, f"team {team_id!r} not found")
-    return teams.team_payload(row)
+    return cast(dict[str, Any], teams.team_payload(row))
 
 
 @router.delete("/teams/{team_id}", status_code=204, summary="Delete an expert team")

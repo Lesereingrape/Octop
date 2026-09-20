@@ -565,9 +565,7 @@ function MessageBubble({
   const avatarTooltip = isTeamHostSpeaker
     ? t("chat.teamHostHover", { name: activeAgent?.name || expert?.name || "" })
     : expert?.name;
-  const avatarProfileId = isTeamHostSpeaker
-    ? activeAgent?.agent_id
-    : speakerId;
+  const avatarProfileId = isTeamHostSpeaker ? activeAgent?.agent_id : speakerId;
   const userName = accountDisplayName(user);
 
   const [isEditing, setIsEditing] = useState(false);

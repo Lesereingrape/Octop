@@ -27,7 +27,11 @@ describe("TeamMemberPicker", () => {
   it("adds and removes members like create", () => {
     const onChange = vi.fn();
     const { rerender } = render(
-      <TeamMemberPicker value={["a", "b"]} onChange={onChange} experts={experts} />,
+      <TeamMemberPicker
+        value={["a", "b"]}
+        onChange={onChange}
+        experts={experts}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Gamma/ }));
@@ -49,10 +53,18 @@ describe("TeamMemberPicker", () => {
 
   it("treats selection as one full roster, dropping unusable ids", () => {
     expect(
-      selectedRosterIds(["a", "missing", "other-team", "b", "a"], [
-        ...experts,
-        { agent_id: "other-team", name: "Nested", kind: "team", is_owner: true },
-      ]),
+      selectedRosterIds(
+        ["a", "missing", "other-team", "b", "a"],
+        [
+          ...experts,
+          {
+            agent_id: "other-team",
+            name: "Nested",
+            kind: "team",
+            is_owner: true,
+          },
+        ],
+      ),
     ).toEqual(["a", "b"]);
   });
 });

@@ -197,7 +197,7 @@ class TeamManager:
                 )
             await self.fan_in_peer_turn(
                 call,
-                messages,
+                messages if isinstance(messages, list) else [],
                 live_streamed=bool(result.get("team_live_streamed")),
             )
         finally:
@@ -428,8 +428,11 @@ class TeamManager:
                 )
         if live_streamed:
             return
+        room = str(call.source_thread_id or "").strip()
+        if not room:
+            return
         await self._push_room_snapshot(
-            call.source_thread_id,
+            room,
             speaker,
             _assistant_text(final),
         )
@@ -1246,6 +1249,12 @@ def _patch_inbox_wrapup(
     if original is None:
         return
 
+    async def _fallback(msg: Any, result_text: str | None, error_text: str | None) -> str | None:
+        reply = await original(msg, result_text, error_text)
+        if reply is None or isinstance(reply, str):
+            return reply
+        return str(reply)
+
     async def synthesize(
         msg: Any,
         result_text: str | None,
@@ -1257,13 +1266,13 @@ def _patch_inbox_wrapup(
         room = str(getattr(msg, "source_thread_id", None) or "").strip()
         host_id = str(getattr(msg, "source_agent_id", None) or "")
         if not host_id or not room:
-            return await original(msg, result_text, error_text)
+            return await _fallback(msg, result_text, error_text)
         if callable(is_team) and not is_team(host_id):
-            return await original(msg, result_text, error_text)
+            return await _fallback(msg, result_text, error_text)
         processor = getattr(inbox, "_processor", None)
         compose = getattr(processor, "compose_followup", None)
         if compose is None:
-            return await original(msg, result_text, error_text)
+            return await _fallback(msg, result_text, error_text)
         prompt = compose(msg, result_text=result_text, error_text=error_text)
         req = build_one_shot_request(
             user_id=msg.user_id,
@@ -1279,7 +1288,7 @@ def _patch_inbox_wrapup(
             )
         except Exception:
             logger.exception("team host wrap-up stream failed host=%s room=%s", host_id, room)
-            return await original(msg, result_text, error_text)
+            return await _fallback(msg, result_text, error_text)
         if isinstance(reply, dict):
             return extract_call_response(reply)
         return ""

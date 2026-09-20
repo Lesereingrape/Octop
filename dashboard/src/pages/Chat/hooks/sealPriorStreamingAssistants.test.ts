@@ -59,7 +59,12 @@ describe("sealPriorStreamingAssistants", () => {
 
   it("does not seal the host when a member bubble starts", () => {
     const input = [
-      msg({ id: "host", role: "assistant", content: "asking", status: "streaming" }),
+      msg({
+        id: "host",
+        role: "assistant",
+        content: "asking",
+        status: "streaming",
+      }),
       msg({
         id: "member",
         role: "assistant",

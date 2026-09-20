@@ -238,7 +238,9 @@ describe("groupConsecutiveAssistantMessages", () => {
       }),
     ];
     expect(
-      findSpeakerTextToContinue(messages, undefined, "host", { teamRoom: true }),
+      findSpeakerTextToContinue(messages, undefined, "host", {
+        teamRoom: true,
+      }),
     ).toBe(-1);
     expect(findSpeakerTextToContinue(messages, "host", "host")).toBe(0);
     expect(findSpeakerTextToContinue(messages, "doctor", "host")).toBe(1);

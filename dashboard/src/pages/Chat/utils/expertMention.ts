@@ -16,7 +16,11 @@ export function withExpertMention(prompt: string, name: string): string {
   const token = expertMentionToken(name);
   const body = prompt.trim();
   if (!token) return body;
-  if (textHasExpertMention(body, name) || body.startsWith(`${token} `) || body === token) {
+  if (
+    textHasExpertMention(body, name) ||
+    body.startsWith(`${token} `) ||
+    body === token
+  ) {
     return body;
   }
   return body ? `${token} ${body}` : `${token} `;

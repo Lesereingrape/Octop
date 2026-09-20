@@ -33,7 +33,9 @@ describe("parseHarnessChunk team speaker", () => {
 
   it("accepts the agent alias and ignores the graph node name", () => {
     expect(
-      parseHarnessChunk('data: {"type":"token","content":"hi","agent":"doctor"}'),
+      parseHarnessChunk(
+        'data: {"type":"token","content":"hi","agent":"doctor"}',
+      ),
     ).toMatchObject({ type: "token", content: "hi", agent_id: "doctor" });
     expect(streamSpeakerId({ type: "token", agent: "doctor" })).toBe("doctor");
     expect(streamSpeakerId({ type: "token", node: "agent" })).toBeUndefined();

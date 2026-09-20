@@ -1003,7 +1003,9 @@ function applyUsageChunk(state: SessionStreamState, chunk: UsageChunk): void {
   state.contextUsage = { input_tokens: input };
 }
 
-function chunkSpeakerId(chunk: { agent_id?: unknown } | object): string | undefined {
+function chunkSpeakerId(
+  chunk: { agent_id?: unknown } | object,
+): string | undefined {
   return streamSpeakerId(chunk);
 }
 
@@ -1277,7 +1279,12 @@ function appendToTextBubble(
     }
     state.messages = [
       ...state.messages.slice(0, idx),
-      { ...target, content: nextContent, contentBlocks: blocks, status: nextStatus },
+      {
+        ...target,
+        content: nextContent,
+        contentBlocks: blocks,
+        status: nextStatus,
+      },
       ...state.messages.slice(idx + 1),
     ];
     return;
@@ -1304,7 +1311,12 @@ function appendStreamingToken(
   if (wrapup) {
     const wrapIdx = findWrapupTextToContinue(state.messages, speaker, hostId);
     if (wrapIdx >= 0) {
-      appendToTextBubble(state, wrapIdx, content, snapshot ? "done" : undefined);
+      appendToTextBubble(
+        state,
+        wrapIdx,
+        content,
+        snapshot ? "done" : undefined,
+      );
       return;
     }
     sealPriorStreamingAssistants(state, speaker);
@@ -1327,15 +1339,15 @@ function appendStreamingToken(
     state.messages,
     speaker,
     hostId,
-    snapshot ? { teamRoom: Boolean(state.isTeamRoom) } : continueTokenOpts(state),
+    snapshot
+      ? { teamRoom: Boolean(state.isTeamRoom) }
+      : continueTokenOpts(state),
   );
   const target = idx >= 0 ? state.messages[idx] : null;
   if (snapshot && target) {
     const prev = target.content || "";
     const sameTurn =
-      content === prev ||
-      content.startsWith(prev) ||
-      prev.startsWith(content);
+      content === prev || content.startsWith(prev) || prev.startsWith(content);
     if (!sameTurn && target.status === "done") {
       sealPriorStreamingAssistants(state, speaker);
       state.messages = [

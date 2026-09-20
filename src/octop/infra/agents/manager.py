@@ -591,11 +591,12 @@ class AgentManager:
                 else profile.get("knowledge_base_ids")
             )
             if spec.kind == "team":
-                mcp_servers_json = dump_id_list([])
+                mcp_servers_json: str | None = dump_id_list([])
             elif spec.mcp_servers is not None:
                 mcp_servers_json = dump_id_list(spec.mcp_servers)
             else:
-                mcp_servers_json = profile.get("mcp_servers")
+                raw_mcp = profile.get("mcp_servers")
+                mcp_servers_json = raw_mcp if isinstance(raw_mcp, str) else None
             self._repos.agent_repo.create(
                 agent_id=agent_id,
                 user_id=spec.user_id,
@@ -814,9 +815,7 @@ class AgentManager:
                 try:
                     affected_teams = self._teams.drop_member(agent_id)
                 except Exception:
-                    logger.exception(
-                        "failed to drop deleted expert %s from team rosters", agent_id
-                    )
+                    logger.exception("failed to drop deleted expert %s from team rosters", agent_id)
             await asyncio.to_thread(self._quiesce_harness_memory, agent_id)
             await self._harness_manager.aremove_agent(agent_id)  # type: ignore[union-attr]
         self._plugin_tool_labels.pop(agent_id, None)

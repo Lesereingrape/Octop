@@ -76,7 +76,9 @@ function joinAnswerParts(parts: string[]): string {
       continue;
     }
     const needSpace =
-      !/\s$/u.test(out) && !/^\s/u.test(part) && !/^[，。！？、,.!?;:]/u.test(part);
+      !/\s$/u.test(out) &&
+      !/^\s/u.test(part) &&
+      !/^[，。！？、,.!?;:]/u.test(part);
     out += needSpace ? ` ${part}` : part;
   }
   return out;

@@ -75,8 +75,8 @@ async def get_chat_welcome(
     catalog = server.expert_catalog
     row = registry.get_row(agent_id)
     if is_team_agent(row):
-        payload = await team_host_welcome_payload(row, registry, catalog)
-        return {**payload, "task_examples": None}
+        team_payload = await team_host_welcome_payload(row, registry, catalog)
+        return {**team_payload, "task_examples": None}
 
     workspace = registry.workspace_for_agent(agent_id)
     payload: dict[str, Any] | None = None

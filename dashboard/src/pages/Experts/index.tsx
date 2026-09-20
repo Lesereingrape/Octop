@@ -730,7 +730,8 @@ export default function ExpertsPage() {
                     default_model: saved.default_model ?? null,
                     color: saved.color ?? item.color,
                     icon_name: saved.icon_name ?? item.icon_name,
-                    welcome_message: saved.welcome_message ?? item.welcome_message,
+                    welcome_message:
+                      saved.welcome_message ?? item.welcome_message,
                     member_ids: saved.member_ids,
                   }
                 : item,
