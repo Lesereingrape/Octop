@@ -476,9 +476,10 @@ class AgentManager:
         async with self._lock:
             if self._harness_manager:
                 try:
-                    self._harness_manager.close()
+                    # Drain SQLite workers before the owning event loop can close.
+                    await self._harness_manager.aclose()
                 except Exception:
-                    logger.exception("harness_manager.close() failed")
+                    logger.exception("harness_manager.aclose() failed")
                 self._harness_manager = None
 
     # ------------------------------------------------------------------

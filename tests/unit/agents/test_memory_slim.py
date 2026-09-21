@@ -7,7 +7,7 @@ import json
 import sqlite3
 import threading
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langgraph.checkpoint.base import empty_checkpoint
@@ -140,7 +140,7 @@ async def test_manager_shutdown_waits_for_maintenance_before_closing_agents(tmp_
         assert not registry._history_backfills
 
     harness_manager = MagicMock()
-    harness_manager.close.side_effect = close_agents
+    harness_manager.aclose = AsyncMock(side_effect=close_agents)
     registry._harness_manager = harness_manager
     monkeypatch.setattr(checkpoint_maintenance, "slim_live_checkpoints", slow)
     coordinator.start("a")
@@ -150,11 +150,11 @@ async def test_manager_shutdown_waits_for_maintenance_before_closing_agents(tmp_
         closing = asyncio.create_task(registry.shutdown())
         await asyncio.sleep(0.05)
         assert not closing.done()
-        harness_manager.close.assert_not_called()
+        harness_manager.aclose.assert_not_awaited()
         assert "a" in registry._history_backfills
         release.set()
         await closing
-        harness_manager.close.assert_called_once()
+        harness_manager.aclose.assert_awaited_once()
         assert coordinator.state["phase"] == "done"
         with pytest.raises(ValueError):
             coordinator.start("a")
