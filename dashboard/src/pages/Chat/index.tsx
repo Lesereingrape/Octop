@@ -5,6 +5,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   PanelLeftOpen,
   GraduationCap,
+  Users,
   Globe,
   FilePen,
   Terminal,
@@ -70,6 +71,7 @@ import {
   chatSkillCatalogAgentId,
   isSharedExpertViewer,
 } from "../../utils/sharedExpert";
+import { isTeamAgent } from "../../utils/teamAgent";
 import ChatDockPanels from "./components/ChatDockPanels";
 import { ChatFilePreviewProvider } from "./ChatFilePreviewContext";
 import { ChatAgentProfileProvider } from "./ChatAgentProfileContext";
@@ -79,6 +81,7 @@ import {
 } from "./ChatToolDockContext";
 import ChatSidebarPanel from "./components/ChatSidebarPanel";
 import ChatTitleBar from "./components/ChatTitleBar";
+import TeamChatBadge from "./components/TeamChatBadge";
 import ChatComposerChrome from "./components/ChatComposerChrome";
 import AskQuestionCard from "./components/AskQuestionCard";
 import { findPendingAsk, hasPendingHitl } from "./utils/pendingHitl";
@@ -191,6 +194,29 @@ function ChatPageInner() {
   const trajectoryEnabled =
     activeAgent !== null && activeAgent.config?.enable_trajectory !== false;
   const sharedExpertViewer = isSharedExpertViewer(activeAgent ?? {});
+  const isTeamChat = isTeamAgent(activeAgent);
+  const [agentProfileOpen, setAgentProfileOpen] = useState(false);
+  const [profileAgentId, setProfileAgentId] = useState<string | null>(null);
+  const profileAgent = useMemo(() => {
+    if (!profileAgentId || profileAgentId === activeAgent?.agent_id) {
+      return activeAgent;
+    }
+    const found = agents.find((item) => item.agent_id === profileAgentId);
+    if (found) return found;
+    if (!activeAgent) return null;
+    return {
+      ...activeAgent,
+      agent_id: profileAgentId,
+      name: profileAgentId,
+      kind: "expert",
+      member_ids: undefined,
+      description: null,
+    };
+  }, [profileAgentId, agents, activeAgent]);
+  const profileOpenLabel = isTeamChat
+    ? t("chat.agentProfile.openTeam")
+    : t("chat.agentProfile.open");
+  const ProfileIcon = isTeamChat ? Users : GraduationCap;
   const noAgents = !agentsLoading && agents.length === 0;
 
   // Sidebar only lists "enabled" experts (harness running). Stopped / failed
@@ -226,7 +252,6 @@ function ChatPageInner() {
   const chatSubagents = useChatSubagents(
     chatSkillCatalogAgentId(resolvedAgentId, agentChatReady, agentsLoading),
   );
-  const [agentProfileOpen, setAgentProfileOpen] = useState(false);
   const [workspaceDrawerOpen, setWorkspaceDrawerOpen] = useState(false);
   const [trajectoryDrawerOpen, setTrajectoryDrawerOpen] = useState(false);
   const [turnRailVisible, setTurnRailVisible] = useState(false);
@@ -268,6 +293,7 @@ function ChatPageInner() {
       return;
     }
     setAgentProfileOpen(false);
+    setProfileAgentId(null);
     setWorkspaceDrawerOpen(false);
     setTrajectoryDrawerOpen(false);
   }, [resolvedAgentId]);
@@ -323,7 +349,7 @@ function ChatPageInner() {
     retryHistory,
     clearMessages,
     resumeHitl,
-  } = useChat(activeThreadId, resolvedAgentId);
+  } = useChat(activeThreadId, resolvedAgentId, isTeamChat);
 
   const hasPendingHitlPause = useMemo(
     () => hasPendingHitl(messages),
@@ -527,11 +553,21 @@ function ChatPageInner() {
   // unloaded harness and silently fail.
   const chatAgentOptionsPickable = useMemo(
     () =>
-      selectEnabledExperts(agents, null, { pinActive: false }).map(
-        projectChatAgentOption,
-      ),
+      selectEnabledExperts(agents, null, { pinActive: false })
+        .filter((item) => !isTeamAgent(item))
+        .map(projectChatAgentOption),
     [agents],
   );
+  const teamExpertOptions = useMemo(() => {
+    if (!isTeamChat) return chatAgentOptionsPickable;
+    const ids = new Set(activeAgent?.member_ids ?? []);
+    return chatAgentOptions.filter((item) => ids.has(item.agent_id));
+  }, [
+    isTeamChat,
+    activeAgent?.member_ids,
+    chatAgentOptions,
+    chatAgentOptionsPickable,
+  ]);
 
   const composerLookups = useMemo(
     () => ({
@@ -712,10 +748,10 @@ function ChatPageInner() {
   }, [navigateToAgent]);
 
   const handlePromptClick = useCallback(
-    (text: string) => {
+    (text: string, options?: { prefill?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      if (promptNeedsUserInput(text)) {
+      if (options?.prefill || promptNeedsUserInput(text)) {
         prefillInputRef.current = trimmed;
         chatInputRef.current?.setPrefillText(trimmed);
         return;
@@ -1059,7 +1095,10 @@ function ChatPageInner() {
                     className={styles.mobileTitle}
                     title={activeSessionTitle}
                   >
-                    {activeSessionTitle}
+                    <span className={styles.mobileTitleText}>
+                      {activeSessionTitle}
+                    </span>
+                    <TeamChatBadge show={isTeamChat} />
                   </div>
                 )}
                 {resolvedAgentId && !sharedExpertViewer && (
@@ -1067,10 +1106,10 @@ function ChatPageInner() {
                     <button
                       className={styles.menuBtn}
                       onClick={() => setAgentProfileOpen(true)}
-                      title={t("chat.agentProfile.open")}
-                      aria-label={t("chat.agentProfile.open")}
+                      title={profileOpenLabel}
+                      aria-label={profileOpenLabel}
                     >
-                      <GraduationCap size={18} strokeWidth={1.8} />
+                      <ProfileIcon size={18} strokeWidth={1.8} />
                     </button>
                     <button
                       className={styles.menuBtn}
@@ -1100,6 +1139,7 @@ function ChatPageInner() {
                 onDelete={handleDeleteSession}
                 forkDisabled={sessionForkDisabled}
                 forkDisabledHint={sessionForkDisabledHint}
+                isTeam={isTeamChat}
               />
             )}
 
@@ -1152,11 +1192,18 @@ function ChatPageInner() {
                   quickCards={expertQuickCards}
                   onPromptClick={handlePromptClick}
                   hideMascot={isStreaming}
+                  isTeam={isTeamChat}
                 />
               ) : (
                 <ChatAgentProfileProvider
                   canOpen={Boolean(resolvedAgentId) && !sharedExpertViewer}
-                  onOpen={() => setAgentProfileOpen(true)}
+                  onOpen={(agentId) => {
+                    setProfileAgentId(
+                      agentId && agentId !== resolvedAgentId ? agentId : null,
+                    );
+                    setAgentProfileOpen(true);
+                  }}
+                  isTeam={isTeamChat}
                 >
                   <MessageList
                     messages={messages}
@@ -1206,7 +1253,7 @@ function ChatPageInner() {
                   {resolvedAgentId && !sharedExpertViewer && (
                     <>
                       <Tooltip
-                        title={t("chat.agentProfile.open")}
+                        title={profileOpenLabel}
                         mouseEnterDelay={0.35}
                         placement="left"
                       >
@@ -1215,9 +1262,9 @@ function ChatPageInner() {
                             type="button"
                             className={styles.agentProfileBtn}
                             onClick={() => setAgentProfileOpen(true)}
-                            aria-label={t("chat.agentProfile.open")}
+                            aria-label={profileOpenLabel}
                           >
-                            <GraduationCap size={20} strokeWidth={2.1} />
+                            <ProfileIcon size={20} strokeWidth={2.1} />
                           </button>
                         </span>
                       </Tooltip>
@@ -1400,6 +1447,7 @@ function ChatPageInner() {
               onCancel={cancelStream}
               onNewChat={handleNewChat}
               isStreaming={isStreaming}
+              isTeam={isTeamChat}
               disabled={!agentChatReady || noAgents || memoryMaintBlocking}
               initialText={prefillInputRef.current}
               onComposerCleared={() => {
@@ -1411,16 +1459,26 @@ function ChatPageInner() {
               reasoningMode={reasoningMode}
               reasoningEffort={reasoningEffort}
               onReasoningChange={handleReasoningChange}
-              availableConnectors={chatConnectors}
-              selectedConnectors={selectedConnectors}
-              onConnectorsChange={handleConnectorsChange}
-              availableKnowledgeBases={chatKnowledgeBases}
-              selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-              onKnowledgeBaseIdsChange={handleKnowledgeBaseIdsChange}
-              availableSkills={chatSkills}
+              availableConnectors={isTeamChat ? undefined : chatConnectors}
+              selectedConnectors={isTeamChat ? [] : selectedConnectors}
+              onConnectorsChange={
+                isTeamChat ? undefined : handleConnectorsChange
+              }
+              availableKnowledgeBases={
+                isTeamChat ? undefined : chatKnowledgeBases
+              }
+              selectedKnowledgeBaseIds={
+                isTeamChat ? [] : selectedKnowledgeBaseIds
+              }
+              onKnowledgeBaseIdsChange={
+                isTeamChat ? undefined : handleKnowledgeBaseIdsChange
+              }
+              availableSkills={isTeamChat ? undefined : chatSkills}
               availableAgents={chatAgentOptions}
-              availableExperts={chatAgentOptionsPickable}
-              availableSubagents={chatSubagents}
+              availableExperts={
+                isTeamChat ? teamExpertOptions : chatAgentOptionsPickable
+              }
+              availableSubagents={isTeamChat ? undefined : chatSubagents}
               agentId={resolvedAgentId}
               threadId={activeThreadId}
               defaultModel={activeAgent?.default_model ?? null}
@@ -1454,9 +1512,12 @@ function ChatPageInner() {
             <>
               <AgentProfileDrawer
                 open={agentProfileOpen}
-                agent={activeAgent}
+                agent={profileAgent}
                 isMobile={isMobile}
-                onClose={() => setAgentProfileOpen(false)}
+                onClose={() => {
+                  setAgentProfileOpen(false);
+                  setProfileAgentId(null);
+                }}
               />
               <WorkspaceDrawer
                 agentId={resolvedAgentId ?? ""}
