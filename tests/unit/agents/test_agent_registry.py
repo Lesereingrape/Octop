@@ -1009,6 +1009,23 @@ async def test_deferred_create_initializes_workspace_before_bootstrap(
 
 
 @pytest.mark.asyncio
+async def test_create_rolls_back_when_initializer_fails(tmp_path: Path) -> None:
+    services = _make_services(tmp_path)
+    registry = _make_registry(services)
+
+    async def initialize(_row: Any, _workspace: Any) -> None:
+        raise RuntimeError("patch failed")
+
+    with pytest.raises(RuntimeError, match="patch failed"):
+        await registry.create(
+            AgentCreateSpec(name="rollback-me"),
+            workspace_initializer=initialize,
+        )
+
+    assert [row.name for row in registry.list_rows()] == []
+
+
+@pytest.mark.asyncio
 async def test_create_with_template_writes_files(tmp_path: Path) -> None:
     """create() with template_name uploads expert files to the agent backend."""
     from octop.infra.agents.experts.catalog import (  # noqa: PLC0415

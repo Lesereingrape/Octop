@@ -643,10 +643,14 @@ class AgentManager:
             elif spec.template_name:
                 await self._seed_expert_template(row, spec.template_name)
             if workspace_initializer is not None:
-                workspace = self._backend_workspace_for_row(row)
-                await workspace_initializer(row, workspace)
-                row = self._repos.agent_repo.get(agent_id)
-                assert row is not None
+                try:
+                    workspace = self._backend_workspace_for_row(row)
+                    await workspace_initializer(row, workspace)
+                    row = self._repos.agent_repo.get(agent_id)
+                    assert row is not None
+                except Exception:
+                    await self._abort_incomplete_create(agent_id)
+                    raise
             if defer_bootstrap:
                 self._repos.agent_repo.set_state(agent_id, "starting")
                 row = self._repos.agent_repo.get(agent_id)
@@ -685,7 +689,7 @@ class AgentManager:
             return row
 
     async def _abort_incomplete_create(self, agent_id: str) -> None:
-        """Best-effort rollback after a failed team create. Caller holds ``_lock``."""
+        """Best-effort rollback after a failed create. Caller holds ``_lock``."""
         try:
             if self._harness_manager is not None:
                 await self._harness_manager.aremove_agent(agent_id)
