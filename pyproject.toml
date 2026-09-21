@@ -215,5 +215,3 @@ markers = [
 filterwarnings = [
     "ignore::starlette.exceptions.StarletteDeprecationWarning",
 ]
-[tool.uv.sources]
-orcakit-harness-agent = { path = "../harness-agent", editable = true }
