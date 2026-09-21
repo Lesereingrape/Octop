@@ -14,6 +14,7 @@
 
 ### 修复
 
+- 元宝机器人创建向导在 Windows 上再也拿不到扫码事件：该子进程此前以文本模式启动，而 JSON 行读取器只接受字节流，`/poll` 一旦有输出就在 `subprocess_io.py` 抛 `AttributeError`（事件被读走丢弃）；现与飞书创建向导一致，改用二进制 stdout 并把 stderr 并入 stdout，子进程的 traceback 不再被无人读取的管道吞掉（#911）
 - `date:` 定时触发与 `cron:` 一样使用 `default_timezone`，裸 ISO 时间不再回落宿主系统时区
 - HITL resume 流失败时将 pending 标为 `expired`（不再像成功批准），避免错误状态误导排查
 - SQLite 写事务改用 `BEGIN IMMEDIATE`：多 worker（`octop run --workers N`）或 CLI 与服务并发写入时，先读后写的事务不再因快照过期而立即报 `database is locked`
