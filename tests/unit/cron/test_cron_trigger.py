@@ -140,6 +140,13 @@ def test_cron_trigger_uses_requested_timezone() -> None:
     assert fire == dt.datetime(2026, 1, 1, 14, 0, tzinfo=dt.UTC)
 
 
+def test_date_trigger_uses_requested_timezone() -> None:
+    """Naive ``date:`` ISO times are wall-clock in the requested zone, not the host OS zone."""
+    trig = build_trigger("date:2026-12-31T09:00:00", timezone="Asia/Shanghai")
+    assert isinstance(trig, DateTrigger)
+    assert (trig.run_date.hour, trig.run_date.utcoffset()) == (9, dt.timedelta(hours=8))
+
+
 def test_interval_one_second_is_accepted() -> None:
     trig = build_trigger("interval:1")
     assert isinstance(trig, IntervalTrigger)

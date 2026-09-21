@@ -156,6 +156,10 @@ async def iter_dashboard_hitl_resume_sse(
         if not disconnected:
             yield format_sse("chunk", {"type": "done"})
     except Exception as exc:
+        # Resume failed after we cleared the pause for reinject safety — do not
+        # leave the record looking like a successful approve/reject.
+        if pending is not None:
+            hitl_coordinator.store.mark_resolved(pending.pending_id, "expired")
         yield format_sse(
             "chunk",
             {"type": "error", "message": format_stream_error(exc, locale)},

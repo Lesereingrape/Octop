@@ -63,11 +63,10 @@ def build_trigger(spec: str, *, timezone: str | None = None) -> BaseTrigger:
     """Parse 'cron:<expr>' / 'interval:<seconds>' / 'date:<ISO>'.
 
     ``timezone`` carries the configured server timezone (``config.default_timezone``) into
-    wall-clock specs. APScheduler only injects the scheduler timezone when a *string* trigger
-    spec is handed to ``add_job()``; a pre-built trigger keeps the zone it was constructed
-    with, and ``CronTrigger`` falls back to the host OS zone. Callers that schedule the built
-    trigger must therefore forward the server timezone here, otherwise ``cron:`` jobs fire at
-    the host's local wall-clock time instead of the configured one.
+    wall-clock specs (``cron:`` and naive ``date:`` ISO times). APScheduler only injects the
+    scheduler timezone when a *string* trigger spec is handed to ``add_job()``; a pre-built
+    trigger keeps the zone it was constructed with, and falls back to the host OS zone.
+    Callers that schedule the built trigger must therefore forward the server timezone here.
     """
     if ":" not in spec:
         raise OctopError(ErrorCode.CRON_TRIGGER_INVALID, f"trigger spec missing kind: {spec!r}")
@@ -88,7 +87,8 @@ def build_trigger(spec: str, *, timezone: str | None = None) -> BaseTrigger:
         if kind == "cron":
             return _cron_trigger_from_unix_crontab(value, timezone=timezone)
         if kind == "date":
-            return DateTrigger(run_date=dt.datetime.fromisoformat(value))
+            # Naive ISO times are wall-clock in *timezone* (same host-zone trap as cron:).
+            return DateTrigger(run_date=dt.datetime.fromisoformat(value), timezone=timezone)
     except (ValueError, TypeError) as exc:
         raise OctopError(
             ErrorCode.CRON_TRIGGER_INVALID,

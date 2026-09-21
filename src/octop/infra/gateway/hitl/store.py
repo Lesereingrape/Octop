@@ -180,7 +180,11 @@ class HitlPendingStore:
                 continue
             record.status = "expired"
 
-    def mark_resolved(self, pending_id: str, status: Literal["approved", "rejected"]) -> None:
+    def mark_resolved(
+        self,
+        pending_id: str,
+        status: Literal["approved", "rejected", "expired"],
+    ) -> None:
         record = self._records.get(pending_id)
         if record is not None:
             record.status = status

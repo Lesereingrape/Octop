@@ -199,5 +199,5 @@ async def test_dashboard_hitl_resume_marks_pending_resolved_when_stream_errors()
     assert any(c.get("type") == "error" for c in chunks)
     resolved = hitl.store.get(first.pending_id)
     assert resolved is not None
-    assert resolved.status == "approved"
+    assert resolved.status == "expired"
     assert hitl.store.resolve_pending_for_thread("thr-err", agent_id="agent-1", user_id=1) is None

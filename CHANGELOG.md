@@ -12,6 +12,9 @@
 - 对话中可隐藏不常用的共享专家（浏览器本地偏好）(#589)
 
 ### 修复
+
+- `date:` 定时触发与 `cron:` 一样使用 `default_timezone`，裸 ISO 时间不再回落宿主系统时区
+- HITL resume 流失败时将 pending 标为 `expired`（不再像成功批准），避免错误状态误导排查
 - SQLite 写事务改用 `BEGIN IMMEDIATE`：多 worker（`octop run --workers N`）或 CLI 与服务并发写入时，先读后写的事务不再因快照过期而立即报 `database is locked`
 - 登录页补充忘记密码说明：本机执行 `octop user passwd <用户名>`，或请管理员重置（#869）
 - iOS PWA 状态栏不再虚化遮挡内容：顶栏改为不透明、去掉 backdrop-filter；登录页与设置向导补 `safe-area-inset` 内边距（#874）
