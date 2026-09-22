@@ -8,12 +8,20 @@
 
 ### 新增
 
+- 生成模型设置新增统一厂商管理与图片/视频独立路由，支持火山方舟、阿里云百炼和 MiniMax 多实例配置。
 - 登录验证码新增极验行为验 v4（#870）：设置页配置 captcha_id / captcha_key，登录弹窗完成验证，服务端按官方协议 HMAC-SHA256 签名后到 gcaptcha4 二次校验（form-urlencoded，仅 result=success 放行）
 - 对话支持默认折叠思考与工具过程（浏览器本地偏好）(#718)
 - 对话中可隐藏不常用的共享专家（浏览器本地偏好）(#589)
 
 ### 修复
 
+- 个性化 → MBTI：从未配置过人格的 Agent 进入页面时，顶部统计行不再出现空的引号（`已选中「」`），改为「当前有（N）个人格，尚未选择人格」；已配置但人格目录里查不到的代码退回显示代码本身，不再渲染成空字符串（#973）
+- 通过 API 更新 agent 配置时不再丢掉 `workspace_dir`：此前只提交部分字段的 PATCH 会让工作区回退到默认布局，scoped / 容器 agent 因而看不到原有的 skills、会话与产出文件
+- 聊天输入框对话模式与模型按钮改为仅显示图标（选中项放到 tooltip），模型选择弹框补上提供商 logo
+- 发布专家时保留源专家的公开头像（内置 SVG 或远程肖像）；仅上传过自定义图片时才走快照头像接口，不再发布后只剩默认图标
+- 同一线程的回合执行改为按 (agent, thread) 串行：HITL resume 与普通回合（Dashboard/IM/cron/团队）此前可并发驱动同一 LangGraph checkpoint，交错写入会污染会话状态；现统一在 `AgentManager` 收口串行
+- CLI `cron run-now` 等待执行及状态、审计落库完成后再关闭内嵌服务；执行失败返回非零退出码，不再提前打印 `ok`（#946）
+- 专家清单生成读取技能元数据改用共享 frontmatter 解析器：模块内自带的解析只认首行 `---` 并按 `:` 逐行切分，导致 `description: >-` 折叠块被当成字面量 `'>-'`、前导 HTML 注释会让整段 frontmatter 失效——技能描述以空值/错值进入生成提示词，进而写坏专家清单的 `description` 与 `welcome_message`
 - 知识库新建文件夹传入被拒绝的路径（`..` 段、或 `.` / `/` 这类规范化后为空的路径）此前返回 500 `INTERNAL_ERROR` 并打印堆栈、还会把内部报错串回显到 `details.cause`；现按调用方输入错误返回 400 `KNOWLEDGE_PATH_INVALID`（本地化文案，details 为空）（#909）
 - `date:` 定时触发与 `cron:` 一样使用 `default_timezone`，裸 ISO 时间不再回落宿主系统时区
 - HITL resume 流失败时将 pending 标为 `expired`（不再像成功批准），避免错误状态误导排查
