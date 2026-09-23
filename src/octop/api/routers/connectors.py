@@ -6,8 +6,9 @@ import asyncio
 import json
 import logging
 import secrets
+from html import escape
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 from octop.api.common.public_base import resolve_public_base
 from octop.api.deps import current_user, get_server, require_permission
 from octop.i18n import tr
+from octop.infra.auth.sso.redirect_after import sanitize_redirect_after
 from octop.infra.connectors.builder import (
     mcp_server_name,
     normalize_weiyun_mcp_token,
@@ -177,7 +179,7 @@ def _oauth_callback_html(
 ) -> HTMLResponse:
     locale = resolve_request_locale(request)
     message = tr(f"connector.oauth.{message_key}", locale, **fmt)
-    return HTMLResponse(f"<html><body>{message}</body></html>", status_code=status_code)
+    return HTMLResponse(f"<html><body>{escape(message)}</body></html>", status_code=status_code)
 
 
 def _resolve_custom_mcp_url(svc: ConnectorService, user_id: int, server_name: str) -> str:
@@ -861,7 +863,11 @@ async def delete_instance(
     user: Any = Depends(current_user),
     server: Any = Depends(get_server),
 ) -> None:
-    """Disconnect and delete stored credentials for a connector instance."""
+    """Disconnect and delete stored credentials for a connector instance.
+
+    QCC revokes the shared refresh token for all five resources first. If remote
+    revocation fails, credentials are retained so disconnection can be retried.
+    """
     custom_target = _resolve_custom_target(instance_id, user=user, server=server)
     if custom_target is not None:
         custom_user_id, synthetic_name = custom_target
@@ -897,7 +903,13 @@ async def delete_instance(
             cli_creds = {"instance_id": instance_id}
         else:
             cli_creds = {**cli_creds, "instance_id": instance_id}
-    repo.delete(instance_id)
+    if inst.kind == "qcc":
+        try:
+            await _connector_service(server).disconnect_qcc(instance_id)
+        except ValueError as exc:
+            raise OctopError(ErrorCode.CONNECTOR_INVALID_CREDENTIALS, str(exc)) from exc
+    else:
+        repo.delete(instance_id)
     if cli_creds is not None:
         cleanup_creds_cli_dirs(inst.kind, cli_creds)
     _schedule_connector_reload(server, user_id, all_users=inst.shared)
@@ -1347,19 +1359,29 @@ async def oauth_callback(
         pending_key,
         json.dumps(pending_payload),
     )
-    redirect = row.redirect_after or "/connectors"
+    redirect = urlsplit(sanitize_redirect_after(row.redirect_after, default="/connectors"))
+    query = [
+        (key, value)
+        for key, value in parse_qsl(redirect.query, keep_blank_values=True)
+        if key != "oauth_state"
+    ]
+    query.append(("oauth_state", row.state_id))
+    redirect_target = redirect._replace(query=urlencode(query)).geturl()
     locale = resolve_request_locale(request)
     success_message = tr("connector.oauth.callback_success", locale)
+    # JSON-encode for the JS string literal (quotes/backslashes/newlines) and
+    # escape "<" so a stored "</script>" cannot terminate the script element.
+    target = json.dumps(redirect_target).replace("<", "\\u003c")
     html = f"""<!DOCTYPE html><html><body>
 <script>
   if (window.opener) {{
-    window.opener.postMessage({{ type: 'octop:connector-oauth', state_id: '{row.state_id}' }}, '*');
+    window.opener.postMessage({{ type: 'octop:connector-oauth', state_id: {json.dumps(row.state_id)} }}, window.location.origin);
     window.close();
   }} else {{
-    window.location.href = '{redirect}?oauth_state={row.state_id}';
+    window.location.href = {target};
   }}
 </script>
-<p>{success_message}</p>
+<p>{escape(success_message)}</p>
 </body></html>"""
     return HTMLResponse(html)
 
