@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 企查查内置连接器恢复一键 OAuth：保留 internal HTTP 工具加载及已有 API Key，支持五类资源共享刷新与远程解绑；注明系统浏览器及公网 HTTPS 回调要求。
+
 ### 变更
 - 运行时依赖改为 `octop-harness[all]` / `octop-gateway` / `octop-memory` / `octop-browser` 1.0.0（原 `orcakit-harness-agent` / `harness-*`）；文档、UI 文案与生成路径同步改为 `octop-*`（`~/.harness-browser` 仅作迁移/拒绝源）
 
@@ -23,6 +27,9 @@
 - `wiki_summary` 的 `lang` 不再被拼进请求主机名：此前传 `evil.com#` 会真的向 `https://evil.com` 发请求（`localhost:8443/` 则打本机端口），并把对方返回的摘要回显进聊天；现只接受 `zh` / `en` / `zh-classical` 这类裸子域标签，其余按「语言代码无效」返回错误卡片
 - 登录验证码的 `OCTOP_CAPTCHA_V3_MIN_SCORE` 只按 `float()` 解析，未校验取值：填成 `nan` 时 `score < nan` 恒为 `False`，`recaptcha-v3` 的分数门槛被静默关闭（机器分 0.0 也能登录），负数同样放行，`inf`/大于 1 则把所有登录锁死。现按该参数已有的「不可用即回落默认值」规则处理，只接受 `0`–`1` 内的有限数值
 
+- 企查查在对话中改为按内部 HTTP MCP 加载工具（`mcp_mode=internal`），不再误走进程内 gateway 导致「无法加载 MCP 工具」
+- 定时任务以专家方式执行时，运行失败（工具调用报错、需要人工介入、没有可见回复）也会把任务提示词和已产出的部分内容投影进会话线程；此前这些线程一个字都没有，点「立即执行」后打开对话只看到空会话（#516）
+- 插件工具返回超大 octop_ui 数据（如番剧上千集选集列表）时不再把整份 JSON 塞进模型上下文导致爆窗：新增中间件把 ≥4000 字符的 UI payload 原地剥离到 `ToolMessage.artifact`，模型只看到保留 title/summary 的精简结果；前端实时流与历史回放均从 artifact 恢复渲染，不影响媒体提取与文本类工具结果（#1032）
 - 知识库新建文件夹传入被拒绝的路径（`..` 段、或 `.` / `/` 这类规范化后为空的路径）此前返回 500 `INTERNAL_ERROR` 并打印堆栈、还会把内部报错串回显到 `details.cause`；现按调用方输入错误返回 400 `KNOWLEDGE_PATH_INVALID`（本地化文案，details 为空）（#909）
 
 ## [1.0.2b2] - 2026-09-23
