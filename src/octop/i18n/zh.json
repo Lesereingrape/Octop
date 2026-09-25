@@ -438,6 +438,7 @@
     "WORKSPACE_ROOT_RESTRICTED": "所选存储根目录超出了该账号允许的范围。",
     "WORKSPACE_ROOT_CONTAINER_UNSUPPORTED": "容器环境下不能设置「允许的存储根目录」。",
     "TOKEN_QUOTA_EXCEEDED": "该账号已达到 token 配额上限，请联系管理员提升额度（{used}/{quota}）。",
+    "AGENT_QUOTA_EXCEEDED": "该账号已达到专家数量上限，请联系管理员提升额度（{used}/{quota}）。",
     "CAPTCHA_REQUIRED": "此服务器登录需要验证码令牌。",
     "CAPTCHA_FAILED": "验证码校验失败，请重试。",
     "CONFIG_FILE_CORRUPT": "无法更新 {path}：该文件不是合法 JSON（{detail}）。请修正语法后重试；现有配置未被改动。",
@@ -647,7 +648,8 @@
     "recursion_limit": "智能体已达到最大迭代次数（递归上限），任务尚未完成。请前往「运行配置」调高「最大迭代次数」后重试。",
     "timeout_network": "连接模型服务超时或网络异常。请检查网络后重试；若使用代理或自建服务，请确认其可达。",
     "provider_unavailable": "模型服务暂时不可用。请稍后重试，或切换其他模型。",
-    "model_call_failed": "模型调用多次重试后仍失败。请稍后重试；若持续失败，请检查模型配置或更换模型。"
+    "model_call_failed": "模型调用多次重试后仍失败。请稍后重试；若持续失败，请检查模型配置或更换模型。",
+    "path_outside_root": "文件路径超出当前专家的存储根目录，无法读写。请改用存储根目录内的路径，或在专家设置中扩大存储根目录（Windows 上请显式指定盘符路径，例如 D:/octop-data）。"
   },
   "attachment": {
     "header": "[附件] {filename}",
@@ -772,7 +774,7 @@
     "unavailable": "无法连接正在运行的新版 Octop，或控制连接中断：{detail}",
     "busy": "已有记忆库整理任务正在进行。",
     "not_ready": "Octop 运行环境尚未准备好。",
-    "upgrade": "当前加载的 harness-memory 未提供在线整理接口。请安装配套版本或加载本地源码后重启 Octop。",
+    "upgrade": "当前加载的 octop-memory 未提供在线整理接口。请安装配套版本或加载本地源码后重启 Octop。",
     "wait_timeout": "智能体持续繁忙超过 120 秒，本次未开始迁移。",
     "incompatible": "在线整理仅支持兼容的新版本 SQLite checkpointer，请更新并重启 Octop。",
     "interrupted": "整理被中断。",
