@@ -22,6 +22,7 @@
 
 - `wiki_summary` 的 `lang` 不再被拼进请求主机名：此前传 `evil.com#` 会真的向 `https://evil.com` 发请求（`localhost:8443/` 则打本机端口），并把对方返回的摘要回显进聊天；现只接受 `zh` / `en` / `zh-classical` 这类裸子域标签，其余按「语言代码无效」返回错误卡片
 - 登录验证码的 `OCTOP_CAPTCHA_V3_MIN_SCORE` 只按 `float()` 解析，未校验取值：填成 `nan` 时 `score < nan` 恒为 `False`，`recaptcha-v3` 的分数门槛被静默关闭（机器分 0.0 也能登录），负数同样放行，`inf`/大于 1 则把所有登录锁死。现按该参数已有的「不可用即回落默认值」规则处理，只接受 `0`–`1` 内的有限数值
+- `OCTOP_PORT` / `octop run --port` 只按 `int()` 解析端口、不校验取值：`70000`、`-1` 会盖掉 config.json 里本来可用的端口，进程在 `socket.bind` 处以 `OverflowError` 退出（报错里既没有变量名也看不出端口来自哪里），而 `--port` 更是在启动之前就把这个值写进 config.json，之后每次 `octop run` 都继续继承它。现按 `resolve_bind` 已支持的「0 表示由系统随机分配端口」把取值收口到 `0`–`65535`：环境变量越界只告警并回落配置文件端口，命令行 `--port` 越界直接报错、不落盘
 
 ## [1.0.2b2] - 2026-09-23
 
