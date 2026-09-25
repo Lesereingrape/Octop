@@ -18,6 +18,12 @@ export interface ToolCallData {
   callId?: string;
   arguments?: string;
   output?: string;
+  /**
+   * Offloaded ``octop_ui`` payload. When the backend strips a large ``data``
+   * field from the tool output (envelope carries ``data_ref: "artifact"``),
+   * the full payload lands here — never in the model's context.
+   */
+  artifact?: unknown;
   errorCode?: string;
   returnCode?: number;
   /** Owning plugin id when known (from tool index / SSE). */
@@ -82,6 +88,13 @@ export interface ChatMessage {
   speakerAgentId?: string;
   /** Host wrap-up after members — never continue the dispatch bubble. */
   teamWrapup?: boolean;
+  /**
+   * Workspace paths written/edited in this turn. Stamped on the final
+   * (or last file-tool) assistant bubble so the edit-file card still
+   * shows when process tools are collapsed; full tool trail is also
+   * persisted for the process panel.
+   */
+  editedFiles?: string[];
 }
 
 /** Per-session state held in the chat store's module-scoped Map. */

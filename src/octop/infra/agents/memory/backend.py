@@ -1,4 +1,4 @@
-"""Resolve agent memory storage backend for harness-agent / harness-memory."""
+"""Resolve agent memory storage backend for octop-harness / octop-memory."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from octop.config import OctopConfig
-from octop.infra.agents.workspace_dir import host_system_dir
+from octop.infra.agents.workspace.dir import host_system_dir
 from octop.infra.errors import ErrorCode, OctopError
 
 

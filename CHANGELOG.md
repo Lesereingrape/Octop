@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 企查查内置连接器恢复一键 OAuth：保留 internal HTTP 工具加载及已有 API Key，支持五类资源共享刷新与远程解绑；注明系统浏览器及公网 HTTPS 回调要求。
+
+### 变更
+- 运行时依赖改为 `octop-harness[all]` / `octop-gateway` / `octop-memory` / `octop-browser` 1.0.0（原 `orcakit-harness-agent` / `harness-*`）；文档、UI 文案与生成路径同步改为 `octop-*`（`~/.harness-browser` 仅作迁移/拒绝源）
+
 ### 修复
 - 知识库文档数达到上限时不再答非所问：单库 `max_documents` 可配置之后，上传超限文档仍按字面量「at most 100」匹配错误文案，只有上限恰好是默认值 100 的库才报对，其余（如 2、500）会返回 409 `KNOWLEDGE_BASE_LIMIT`「每个用户最多可创建 20 个知识库」；现按两条报错各自的稳定措辞区分，超限一律正确返回 `KNOWLEDGE_DOC_LIMIT`
 - 知识库文档重命名保留存储键的文件后缀：改名去掉 `.pdf` 等后缀后，原文下载/预览会 404、删除也会留下孤儿文件；现按 `create_text_document` 的既有做法补回原后缀，目录改名不受影响 (#1107)
@@ -20,6 +27,9 @@
 - `wiki_summary` 的 `lang` 不再被拼进请求主机名：此前传 `evil.com#` 会真的向 `https://evil.com` 发请求（`localhost:8443/` 则打本机端口），并把对方返回的摘要回显进聊天；现只接受 `zh` / `en` / `zh-classical` 这类裸子域标签，其余按「语言代码无效」返回错误卡片
 - 登录验证码的 `OCTOP_CAPTCHA_V3_MIN_SCORE` 只按 `float()` 解析，未校验取值：填成 `nan` 时 `score < nan` 恒为 `False`，`recaptcha-v3` 的分数门槛被静默关闭（机器分 0.0 也能登录），负数同样放行，`inf`/大于 1 则把所有登录锁死。现按该参数已有的「不可用即回落默认值」规则处理，只接受 `0`–`1` 内的有限数值
 
+- 企查查在对话中改为按内部 HTTP MCP 加载工具（`mcp_mode=internal`），不再误走进程内 gateway 导致「无法加载 MCP 工具」
+- 定时任务以专家方式执行时，运行失败（工具调用报错、需要人工介入、没有可见回复）也会把任务提示词和已产出的部分内容投影进会话线程；此前这些线程一个字都没有，点「立即执行」后打开对话只看到空会话（#516）
+- 插件工具返回超大 octop_ui 数据（如番剧上千集选集列表）时不再把整份 JSON 塞进模型上下文导致爆窗：新增中间件把 ≥4000 字符的 UI payload 原地剥离到 `ToolMessage.artifact`，模型只看到保留 title/summary 的精简结果；前端实时流与历史回放均从 artifact 恢复渲染，不影响媒体提取与文本类工具结果（#1032）
 - 元宝机器人创建向导在 Windows 上再也拿不到扫码事件：该子进程此前以文本模式启动，而 JSON 行读取器只接受字节流，`/poll` 一旦有输出就在 `subprocess_io.py` 抛 `AttributeError`（事件被读走丢弃）；现与飞书创建向导一致，改用二进制 stdout 并把 stderr 并入 stdout，子进程的 traceback 不再被无人读取的管道吞掉（#911）
 
 ## [1.0.2b2] - 2026-09-23
