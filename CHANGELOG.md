@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+### 修复
+- 暗色主题下知识库 Markdown 预览白底白字导致正文不可见（补上未定义的 `--fn-bg-container` 主题变量，Fixes #1215）。
 - 知识库新建文件夹传入被拒绝的路径（`..` 段、或 `.` / `/` 这类规范化后为空的路径）此前返回 500 `INTERNAL_ERROR` 并打印堆栈、还会把内部报错串回显到 `details.cause`；现按调用方输入错误返回 400 `KNOWLEDGE_PATH_INVALID`（本地化文案，details 为空）（#909）
 
 ## [1.0.2b3] - 2026-09-26
