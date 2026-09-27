@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+### 修复
+- 暗色主题下知识库 Markdown 预览白底白字导致正文不可见（补上未定义的 `--fn-bg-container` 主题变量，Fixes #1215）。
 - 元宝机器人创建向导在 Windows 上再也拿不到扫码事件：该子进程此前以文本模式启动，而 JSON 行读取器只接受字节流，`/poll` 一旦有输出就在 `subprocess_io.py` 抛 `AttributeError`（事件被读走丢弃）；现与飞书创建向导一致，改用二进制 stdout 并把 stderr 并入 stdout，子进程的 traceback 不再被无人读取的管道吞掉（#911）
 
 ## [1.0.2b3] - 2026-09-26
