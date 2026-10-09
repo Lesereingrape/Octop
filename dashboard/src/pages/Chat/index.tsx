@@ -17,6 +17,7 @@ import { message as antMessage } from "@/utils/antdMessage";
 import { showConfirmModal } from "../../utils/confirmModal";
 import PlanReadyCard from "./components/PlanReadyCard";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { useHitlEnabled } from "../../hooks/useHitlEnabled";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { navAllowed, userCan } from "../../utils/permissions";
 import { useChat } from "./hooks/useChat";
@@ -37,8 +38,15 @@ import { useChatSessionActions } from "./hooks/useChatSessionActions";
 
 import { useChatComposerResources } from "./hooks/useChatComposerResources";
 import type { HitlSessionPolicy } from "./utils/hitlSessionPolicy";
-import { mergeAllowTools } from "./utils/hitlSessionPolicy";
+import {
+  mergeAllowTools,
+  parseHitlSessionPolicy,
+} from "./utils/hitlSessionPolicy";
 import { useChatContextWindow } from "./hooks/useChatContextWindow";
+import {
+  disableProviderStreamUsage,
+  providerIdForTurn,
+} from "../../utils/disableProviderStreamUsage";
 import { useBrowserToolDetection } from "./hooks/useBrowserToolDetection";
 import { useSkillRecordingWorkflow } from "./hooks/useSkillRecordingWorkflow";
 import { listDockFilePathsForTree } from "./utils/dockFilePath";
@@ -88,9 +96,10 @@ import TeamChatBadge from "./components/TeamChatBadge";
 import ChatComposerChrome from "./components/ChatComposerChrome";
 import AskQuestionCard from "./components/AskQuestionCard";
 import {
-  findPendingApproval,
+  findAutoResumableApproval,
   findPendingAsk,
   hasPendingHitl,
+  isResumableHitl,
 } from "./utils/pendingHitl";
 import { isAgentChatReady } from "../../utils/agentError";
 import { useMemoryMaintenance } from "./hooks/useMemoryMaintenance";
@@ -125,6 +134,7 @@ function ChatPageInner() {
     threadId: threadId ?? null,
   });
   const isMobile = useIsMobile();
+  const hitlEnabled = useHitlEnabled();
   const user = useCurrentUser();
   const { layoutMode } = useLayoutMode();
   const isMinimalLayout = layoutMode === "minimal";
@@ -364,6 +374,7 @@ function ChatPageInner() {
     [messages],
   );
   const pendingAsk = useMemo(() => findPendingAsk(messages), [messages]);
+  const autoResumedApprovalRef = useRef<string | null>(null);
 
   const refreshBrowserRef = useRef<() => void>(() => {});
 
@@ -889,21 +900,27 @@ function ChatPageInner() {
           policy.mode === "allow_tools"
             ? mergeAllowTools(hitlPolicy, policy.tools ?? [])
             : policy;
+        const pending = findAutoResumableApproval(next, messages);
+        if (pending && activeThreadId) {
+          autoResumedApprovalRef.current = `${activeThreadId}:${pending.messageId}`;
+        }
         handleHitlPolicyChange(next, { persist: false });
         resumeHitl(decisions, activeThreadId ?? undefined, undefined, next);
         return;
       }
       resumeHitl(decisions, activeThreadId ?? undefined);
     },
-    [resumeHitl, activeThreadId, handleHitlPolicyChange, hitlPolicy],
+    [resumeHitl, activeThreadId, handleHitlPolicyChange, hitlPolicy, messages],
   );
 
   const handleComposerHitlPolicyChange = useCallback(
     (policy: HitlSessionPolicy) => {
-      const pending =
-        policy.mode === "allow_all" ? findPendingApproval(messages) : null;
+      const pending = findAutoResumableApproval(policy, messages);
       handleHitlPolicyChange(policy, { persist: !pending });
       if (!pending) return;
+      if (activeThreadId) {
+        autoResumedApprovalRef.current = `${activeThreadId}:${pending.messageId}`;
+      }
       resumeHitl(
         pending.actions.map(() => ({ type: "approve" })),
         activeThreadId ?? undefined,
@@ -913,6 +930,33 @@ function ChatPageInner() {
     },
     [handleHitlPolicyChange, messages, resumeHitl, activeThreadId],
   );
+
+  useEffect(() => {
+    if (isStreaming || !activeThreadId) return;
+    const sessionPolicy = parseHitlSessionPolicy(composerSession?.hitlPolicy);
+    const pending = findAutoResumableApproval(sessionPolicy, messages);
+    if (!pending) {
+      autoResumedApprovalRef.current = null;
+      return;
+    }
+    const card = messages.find((message) => message.id === pending.messageId);
+    if (!isResumableHitl(card?.hitlData)) return;
+    const resumeKey = `${activeThreadId}:${pending.messageId}`;
+    if (autoResumedApprovalRef.current === resumeKey) return;
+    autoResumedApprovalRef.current = resumeKey;
+    resumeHitl(
+      pending.actions.map(() => ({ type: "approve" })),
+      activeThreadId,
+      undefined,
+      sessionPolicy,
+    );
+  }, [
+    composerSession?.hitlPolicy,
+    messages,
+    activeThreadId,
+    resumeHitl,
+    isStreaming,
+  ]);
 
   /** Close an ask pause without answering: ``respond`` is the only decision
    *  the agent allows for ``ask_user_question``, so tell it to wrap up. */
@@ -970,6 +1014,41 @@ function ChatPageInner() {
     },
     [messages, wrappedHandleSend, hasPendingHitlPause, t],
   );
+
+  const handleDisableStreamUsage = useCallback(async () => {
+    let lastUserModel: string | null = null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "user") {
+        lastUserModel = messages[i].composerContext?.model ?? null;
+        break;
+      }
+    }
+    const providerId = providerIdForTurn(availableModels, [
+      lastUserModel,
+      selectedModel,
+      activeAgent?.default_model,
+      activeModelRef,
+    ]);
+    if (providerId == null) {
+      antMessage.error(t("chat.disableStreamUsageFailed"));
+      return false;
+    }
+    try {
+      await disableProviderStreamUsage(providerId);
+      antMessage.success(t("chat.disableStreamUsageSuccess"));
+      return true;
+    } catch {
+      antMessage.error(t("chat.disableStreamUsageFailed"));
+      return false;
+    }
+  }, [
+    availableModels,
+    selectedModel,
+    activeAgent?.default_model,
+    activeModelRef,
+    messages,
+    t,
+  ]);
 
   // Edit user message: truncate history from that message onwards, replace
   // its content, and re-send — mirrors Claude / ChatGPT "edit message" behaviour.
@@ -1385,6 +1464,7 @@ function ChatPageInner() {
                     thinkingStartedAt={thinkingStartedAt}
                     sessionKey={activeThreadId ?? undefined}
                     onRegenerate={handleRegenerate}
+                    onDisableStreamUsage={handleDisableStreamUsage}
                     onEditUserMessage={handleEditUserMessage}
                     onForkAssistantMessage={handleForkAssistantMessage}
                     forkDisabled={forkDisabled}
@@ -1671,7 +1751,9 @@ function ChatPageInner() {
               conversationMode={conversationMode}
               onConversationModeChange={handleConversationModeChange}
               hitlPolicy={hitlPolicy}
-              onHitlPolicyChange={handleComposerHitlPolicyChange}
+              onHitlPolicyChange={
+                hitlEnabled ? handleComposerHitlPolicyChange : undefined
+              }
               availableConnectors={isTeamChat ? undefined : chatConnectors}
               selectedConnectors={isTeamChat ? [] : selectedConnectors}
               onConnectorsChange={
