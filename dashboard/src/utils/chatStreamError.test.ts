@@ -47,6 +47,18 @@ describe("classifyChatStreamError", () => {
     });
   });
 
+  it("classifies MindIE 422 parameter rejection as invalid_request", () => {
+    const msg =
+      "Error code: 422 - {error:'Check open ai req parameter error'," +
+      "'error_type': 'Input Validation Error'}";
+    expect(classifyChatStreamError(msg)).toBe("stream_errors.invalid_request");
+    expect(chatStreamErrorAction(msg)).toEqual({
+      path: "/admin/models",
+      labelKey: "chat.disableStreamUsageAndRetry",
+      fix: "disable_stream_usage",
+    });
+  });
+
   it("classifies HTTP 5xx as provider_unavailable", () => {
     expect(classifyChatStreamError("HTTP 503: service overloaded")).toBe(
       "stream_errors.provider_unavailable",
@@ -110,5 +122,24 @@ describe("classifyChatStreamError", () => {
     expect(formatChatStreamError(msg, t)).toBe(
       "translated:stream_errors.stream_stall",
     );
+  });
+
+  it("does not treat ordinary answers that mention errors as stream failures", () => {
+    expect(
+      isChatStreamError(
+        "If you see Error code: 429 or rate_limit, wait and retry.",
+      ),
+    ).toBe(false);
+    expect(isChatStreamError("Check HTTP 401 if the API key is wrong.")).toBe(
+      false,
+    );
+    expect(isChatStreamError("The request timed out; we can try again.")).toBe(
+      false,
+    );
+    expect(
+      classifyChatStreamError(
+        "If you see Error code: 429 or rate_limit, wait and retry.",
+      ),
+    ).toBe("stream_errors.rate_limit");
   });
 });
