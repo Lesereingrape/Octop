@@ -46,6 +46,8 @@ _EXT_TO_CONTENT_TYPE = {
     ".csv": "text/csv",
     ".tsv": "text/tab-separated-values",
     ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".wps": "application/msword",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ".xls": "application/vnd.ms-excel",
@@ -324,8 +326,20 @@ class KnowledgeService:
         self, kb_id: str, *, actor_user_id: int, is_admin: bool = False
     ) -> KnowledgeBaseRow:
         base = self._require_base(kb_id)
-        if is_admin or base.owner_user_id == actor_user_id or base.shared:
+        if is_admin or base.owner_user_id == actor_user_id:
             return base
+        if base.shared:
+            from octop.infra.users.groups import RESOURCE_KNOWLEDGE_BASE, GroupAccess
+
+            repos = getattr(self._services, "repos", None)
+            if repos is None or GroupAccess(repos).allows(
+                user_id=actor_user_id,
+                is_admin=False,
+                resource_type=RESOURCE_KNOWLEDGE_BASE,
+                resource_key=base.id,
+                is_owner=False,
+            ):
+                return base
         raise PermissionError("knowledge base read access is required")
 
     def get_writable_base(
@@ -452,6 +466,11 @@ class KnowledgeService:
     def delete_base(self, kb_id: str, *, actor_user_id: int, is_admin: bool = False) -> None:
         self.require_owner(kb_id, actor_user_id=actor_user_id, is_admin=is_admin)
         self._repo.delete_base(kb_id)
+        from octop.infra.users.groups import RESOURCE_KNOWLEDGE_BASE, GroupAccess
+
+        repos = getattr(self._services, "repos", None)
+        if repos is not None:
+            GroupAccess(repos).clear(RESOURCE_KNOWLEDGE_BASE, kb_id)
         delete_knowledge_base_files(kb_id)
 
     def _require_base(self, kb_id: str) -> KnowledgeBaseRow:
