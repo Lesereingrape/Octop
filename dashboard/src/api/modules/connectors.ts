@@ -60,6 +60,8 @@ export interface ConnectorInstance {
   /** When true, chat composer pre-selects this connector. */
   default_open?: boolean;
   shared: boolean;
+  /** False when the connector feature is restricted to groups this user is not in. */
+  usable?: boolean;
   owner_user_id: number;
   owner_username?: string | null;
   owner_display_name?: string | null;
@@ -190,13 +192,37 @@ export interface FeishuUserAuthCompleteResult {
   cli_config_key: string;
 }
 
+export interface AgentlyAuthStatus {
+  status: "idle" | "pending" | "authorized" | "expired" | "error";
+  verification_url: string | null;
+  user_code: string | null;
+  expires_at: number | null;
+  error: string | null;
+}
+
 export const connectorsApi = {
   catalog: () => request<ConnectorCatalogEntry[]>("/connectors/catalog"),
+
+  getAccess: () =>
+    request<{ visibility: "all" | "groups"; group_ids: string[] }>(
+      "/connectors/access",
+    ),
+
+  setAccess: (body: { visibility: "all" | "groups"; group_ids?: string[] }) =>
+    request<{ visibility: "all" | "groups"; group_ids: string[] }>(
+      "/connectors/access",
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
 
   detectLocalWeKnora: () =>
     request<WeKnoraLocalDetection>("/connectors/weknora/detect-local"),
 
-  listInstances: () => request<ConnectorInstance[]>("/connector-instances"),
+  listInstances: (agentId?: string | null) =>
+    request<ConnectorInstance[]>("/connector-instances", {
+      headers: agentId?.trim()
+        ? { "X-Octop-Agent-Id": agentId.trim() }
+        : undefined,
+    }),
 
   getInstance: (instanceId: string) =>
     request<ConnectorInstanceDetail>(
@@ -310,6 +336,17 @@ export const connectorsApi = {
     request<ConnectorCliInstallResult>(
       `/connectors/${encodeURIComponent(kind)}/install-cli`,
       { method: "POST" },
+    ),
+
+  agentlyAuth: (
+    instanceId: string,
+    action: "start" | "status" | "logout" | "refresh",
+  ) =>
+    request<AgentlyAuthStatus>(
+      `/connector-instances/${encodeURIComponent(
+        instanceId,
+      )}/agently-auth/${action}`,
+      { method: action === "status" ? "GET" : "POST" },
     ),
 
   feishuUserAuthStart: (body: {

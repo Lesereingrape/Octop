@@ -1,4 +1,9 @@
-import { request, requestBlob, requestUpload } from "../request";
+import {
+  bridgeAgentHeaders,
+  request,
+  requestBlob,
+  requestUpload,
+} from "../request";
 
 export interface KnowledgeLimits {
   max_bases_per_owner: number;
@@ -45,6 +50,8 @@ export interface KnowledgeBase {
   description: string;
   default_open: boolean;
   shared: boolean;
+  visibility?: "all" | "groups" | "owner";
+  group_ids?: string[];
   icon_name: string;
   embedding_model: string;
   embedding_dim: number;
@@ -114,8 +121,10 @@ export const DEFAULT_KNOWLEDGE_LIMITS: KnowledgeLimits = {
 };
 
 export const knowledgeBasesApi = {
-  getCapability: () =>
-    request<KnowledgeCapability>("/knowledge-bases/capability"),
+  getCapability: (agentId?: string | null) =>
+    request<KnowledgeCapability>("/knowledge-bases/capability", {
+      headers: bridgeAgentHeaders(agentId),
+    }),
 
   setFeature: (body: {
     enabled: boolean;
@@ -132,7 +141,10 @@ export const knowledgeBasesApi = {
       body: JSON.stringify(body),
     }),
 
-  list: () => request<KnowledgeBase[]>("/knowledge-bases"),
+  list: (agentId?: string | null) =>
+    request<KnowledgeBase[]>("/knowledge-bases", {
+      headers: bridgeAgentHeaders(agentId),
+    }),
   getEmbeddingOptions: (opts?: { allOnnx?: boolean }) =>
     request<KnowledgeEmbeddingOptions>(
       opts?.allOnnx
@@ -181,6 +193,8 @@ export const knowledgeBasesApi = {
     description?: string;
     default_open?: boolean;
     shared?: boolean;
+    visibility?: "all" | "groups" | "owner";
+    group_ids?: string[];
     icon_name?: string;
     max_documents?: number;
   }) =>
@@ -196,6 +210,8 @@ export const knowledgeBasesApi = {
       description?: string;
       default_open?: boolean;
       shared?: boolean;
+      visibility?: "all" | "groups" | "owner";
+      group_ids?: string[];
       icon_name?: string;
       max_documents?: number;
     },

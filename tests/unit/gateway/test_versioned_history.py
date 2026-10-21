@@ -18,7 +18,7 @@ from octop.infra.db.repos.thread_messages import ThreadMessageRepo
 from octop.infra.db.repos.threads import ThreadRepo
 from octop.infra.db.repos.trajectory_events import TrajectoryEventRepo
 from octop.infra.db.repos.users import UserRepo
-from octop.infra.gateway.process.history_projection import message_inputs
+from octop.infra.history.projection import message_inputs
 from octop.infra.history.recorder import RecordingTracker
 from octop.infra.history.service import HistoryArchive
 from octop.infra.history.store import HistoryStore
@@ -136,6 +136,28 @@ async def test_state_merge_keeps_checkpoint_ts_from_snapshot(archive):
     }
     assert messages["u1"].additional_kwargs[CHECKPOINT_TS_KEY] == 1_700_000_000_111
     assert messages["a1"].additional_kwargs[CHECKPOINT_TS_KEY] == 1_700_000_000_222
+
+
+@pytest.mark.asyncio
+async def test_recorder_drops_tokens_from_another_speaker(archive):
+    turn = archive.begin("a", "t")
+    recorder = RecordingTracker(archive, turn, [HumanMessage(content="question", id="u1")])
+    recorder.observe({"type": "token", "message_id": "a1", "content": "host says", "agent_id": "a"})
+    recorder.observe({"type": "token", "content": "LEAK", "agent_id": "member"})
+    recorder.observe({"type": "reasoning", "content": "member thought", "agent_id": "member"})
+    await recorder.finish(completed=True)
+    messages = {
+        msg.id: msg
+        for msg in messages_from_dict(
+            (await archive.page("t", limit=10, cursor=None, legacy_reader=no_anchor))["messages"]
+        )
+    }
+    assert messages["a1"].content == "host says"
+    assert all("LEAK" not in str(msg.content) for msg in messages.values())
+    assert all(
+        "member thought" not in str((msg.additional_kwargs or {}).get("reasoning_content") or "")
+        for msg in messages.values()
+    )
 
 
 @pytest.mark.asyncio
@@ -453,6 +475,36 @@ async def test_revised_state_message_keeps_latest_tool_metadata(archive):
     assert answer.content == "final"
     assert answer.response_metadata["model_name"] == "test"
     assert answer.additional_kwargs["reasoning_content"] == "thought"
+
+
+@pytest.mark.asyncio
+async def test_state_update_does_not_replace_stream_error(archive):
+    turn = archive.begin("a", "t")
+    tracker = RecordingTracker(archive, turn, [HumanMessage(content="question", id="u")])
+    tracker.observe({"type": "token", "message_id": "m", "content": "partial"})
+    tracker.observe({"type": "error", "message": "Error code: 402 insufficient balance"})
+    tracker.observe(
+        {
+            "type": "state_update",
+            "data": {
+                "messages": [
+                    HumanMessage(content="question", id="u"),
+                    AIMessage(content="partial from checkpoint", id="ckpt-1"),
+                    AIMessage(content="later thought", id="ckpt-2"),
+                ]
+            },
+        }
+    )
+    await tracker.finish(completed=False)
+    recovered = messages_from_dict(
+        (await archive.page("t", limit=20, cursor=None, legacy_reader=no_anchor))["messages"]
+    )
+    error = next(
+        message for message in recovered if message.additional_kwargs.get("octop_stream_error")
+    )
+    assert "insufficient" in str(error.content).lower()
+    assert any("partial" in str(message.content) for message in recovered)
+    assert any(message.content == "later thought" for message in recovered)
 
 
 @pytest.mark.asyncio

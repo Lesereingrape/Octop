@@ -26,8 +26,13 @@ export interface DocumentPreviewCoreProps {
     onProgress?: (loaded: number, total: number) => void,
     signal?: AbortSignal,
   ) => Promise<Blob>;
-  /** Optional download when the kind cannot be rendered (e.g. legacy ``.ppt``). */
+  /** Optional download when the kind cannot be rendered (legacy ``.ppt`` / ``.doc``). */
   onDownload?: () => void | Promise<void>;
+}
+
+/** Office binaries with no in-browser renderer (legacy ``.ppt`` / ``.doc``). */
+function isDownloadOnlyKind(kind: DocKind): boolean {
+  return kind === "ppt" || kind === "doc";
 }
 
 function isAbortError(err: unknown): boolean {
@@ -398,7 +403,7 @@ export default function DocumentPreviewCore({
     pptxViewerRef.current?.destroy();
     pptxViewerRef.current = null;
     if (containerRef.current) containerRef.current.innerHTML = "";
-    if (kind === "ppt") {
+    if (isDownloadOnlyKind(kind)) {
       setLoading(false);
       return;
     }
@@ -510,6 +515,13 @@ export default function DocumentPreviewCore({
         if (!cancelled) setLoading(false);
       } catch (err) {
         if (cancelled || isAbortError(err)) return;
+        // Surface the real cause (chunk load / ZIP parse / library error) —
+        // the UI only shows a generic "无法加载预览".
+        console.error(
+          "[DocumentPreviewCore] preview failed",
+          { kind, filename },
+          err,
+        );
         setError(isNotFoundApiError(err) ? "missing" : "error");
         setLoading(false);
       }
@@ -560,7 +572,7 @@ export default function DocumentPreviewCore({
     );
   }
 
-  if (kind === "ppt") {
+  if (isDownloadOnlyKind(kind)) {
     return (
       <div className={styles.viewerEmpty}>
         <p

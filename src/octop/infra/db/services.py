@@ -9,6 +9,7 @@ from octop.infra.db.pool import DatabasePool
 from octop.infra.db.repos.agents import AgentRepo
 from octop.infra.db.repos.audit import AuditRepo
 from octop.infra.db.repos.backends import BackendRepo
+from octop.infra.db.repos.bridge_connections import BridgeConnectionRepo
 from octop.infra.db.repos.care_push import CarePushRepo
 from octop.infra.db.repos.channels import ChannelRepo
 from octop.infra.db.repos.connectors import ConnectorRepo
@@ -18,6 +19,7 @@ from octop.infra.db.repos.knowledge import KnowledgeRepo
 from octop.infra.db.repos.proactive_care_config import ProactiveCareConfigRepo
 from octop.infra.db.repos.providers import ProviderRepo
 from octop.infra.db.repos.published_experts import PublishedExpertRepo
+from octop.infra.db.repos.resource_group_grants import ResourceGroupGrantRepo
 from octop.infra.db.repos.secrets import SecretRepo
 from octop.infra.db.repos.sessions import SessionRepo
 from octop.infra.db.repos.settings import SettingsRepo
@@ -27,6 +29,8 @@ from octop.infra.db.repos.thread_messages import ThreadMessageRepo
 from octop.infra.db.repos.threads import ThreadRepo
 from octop.infra.db.repos.trajectory_events import TrajectoryEventRepo
 from octop.infra.db.repos.usage import UsageRepo
+from octop.infra.db.repos.user_group_members import UserGroupMemberRepo
+from octop.infra.db.repos.user_groups import UserGroupRepo
 from octop.infra.db.repos.user_policies import UserPolicyRepo
 from octop.infra.db.repos.users import UserRepo
 from octop.infra.db.repos.voice_providers import VoiceProviderRepo
@@ -53,6 +57,7 @@ class RepoBundle:
     usage_repo: UsageRepo
     settings_repo: SettingsRepo
     storage_backend_repo: BackendRepo
+    bridge_connection_repo: BridgeConnectionRepo
     connector_repo: ConnectorRepo
     skill_package_repo: SkillPackageRepo
     published_expert_repo: PublishedExpertRepo
@@ -61,6 +66,9 @@ class RepoBundle:
     care_push_repo: CarePushRepo
     proactive_care_config_repo: ProactiveCareConfigRepo
     sso_repo: SsoRepo
+    user_group_repo: UserGroupRepo
+    user_group_member_repo: UserGroupMemberRepo
+    resource_group_grant_repo: ResourceGroupGrantRepo
 
     @classmethod
     def from_pool(cls, db: DatabasePool) -> RepoBundle:
@@ -82,6 +90,7 @@ class RepoBundle:
             usage_repo=UsageRepo(db),
             settings_repo=SettingsRepo(db),
             storage_backend_repo=BackendRepo(db),
+            bridge_connection_repo=BridgeConnectionRepo(db),
             connector_repo=ConnectorRepo(db),
             skill_package_repo=SkillPackageRepo(db),
             published_expert_repo=PublishedExpertRepo(db),
@@ -90,6 +99,9 @@ class RepoBundle:
             care_push_repo=CarePushRepo(db),
             proactive_care_config_repo=ProactiveCareConfigRepo(db),
             sso_repo=SsoRepo(db),
+            user_group_repo=UserGroupRepo(db),
+            user_group_member_repo=UserGroupMemberRepo(db),
+            resource_group_grant_repo=ResourceGroupGrantRepo(db),
         )
 
 
@@ -166,6 +178,10 @@ class SharedServices:
     @property
     def storage_backend_repo(self) -> BackendRepo:
         return self.repos.storage_backend_repo
+
+    @property
+    def bridge_connection_repo(self) -> BridgeConnectionRepo:
+        return self.repos.bridge_connection_repo
 
     @property
     def connector_repo(self) -> ConnectorRepo:

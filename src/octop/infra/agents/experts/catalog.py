@@ -21,7 +21,7 @@ from typing import Any, cast
 from octop_harness.backends.workspace import BackendWorkspace
 
 from octop.infra.agents.manager import AgentCreateSpec
-from octop.infra.agents.workspace_dir import DEFAULT_SYSTEM_FILES_PATH
+from octop.infra.agents.workspace.dir import DEFAULT_SYSTEM_FILES_PATH
 from octop.infra.errors import ErrorCode, OctopError
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ _FALLBACK_BUNDLED_AVATAR_IDS = frozenset(
     {
         "ai-coding-coach",
         "ai-safety-guardian",
+        "business-operations",
         "clinical-learning-subscription",
         "cvm-ai-doctor",
         "cvm-cluster-doctor",

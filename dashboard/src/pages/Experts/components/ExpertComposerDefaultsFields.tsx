@@ -6,7 +6,14 @@ import { connectorsApi } from "../../../api/modules/connectors";
 import { knowledgeBasesApi } from "../../../api/modules/knowledgeBases";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 
-export default function ExpertComposerDefaultsFields() {
+interface ExpertComposerDefaultsFieldsProps {
+  /** Bridge shadow id so knowledge / connector pickers tunnel to the peer. */
+  agentId?: string | null;
+}
+
+export default function ExpertComposerDefaultsFields({
+  agentId,
+}: ExpertComposerDefaultsFieldsProps) {
   const { t } = useTranslation();
   const currentUserId = useCurrentUser()?.id ?? null;
   const [knowledgeBases, setKnowledgeBases] = useState<
@@ -22,7 +29,7 @@ export default function ExpertComposerDefaultsFields() {
     let cancelled = false;
     setKnowledgeLoading(true);
     knowledgeBasesApi
-      .list()
+      .list(agentId)
       .then((bases) => {
         if (!cancelled) {
           setKnowledgeBases(
@@ -39,18 +46,23 @@ export default function ExpertComposerDefaultsFields() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [agentId]);
 
   useEffect(() => {
     let cancelled = false;
     setConnectorsLoading(true);
     connectorsApi
-      .listInstances()
+      .listInstances(agentId)
       .then((instances) => {
         if (cancelled) return;
         setConnectors(
           (instances ?? [])
-            .filter((item) => item.status === "active" && item.has_credentials)
+            .filter(
+              (item) =>
+                item.status === "active" &&
+                item.has_credentials &&
+                item.usable !== false,
+            )
             .map((item) => ({
               value: item.mcp_server_name,
               label:
@@ -73,7 +85,7 @@ export default function ExpertComposerDefaultsFields() {
     return () => {
       cancelled = true;
     };
-  }, [currentUserId]);
+  }, [agentId, currentUserId]);
 
   return (
     <>
