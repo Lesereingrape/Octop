@@ -26,6 +26,11 @@ import {
 import { skillPackagesApi } from "../../../api/modules/skillPackages";
 import type { SkillPackage } from "../../../api/types/skillPackage";
 import { AgentAdvancedConfigFields } from "../../../components/AgentAdvancedConfigFields";
+import { TextAssistBar } from "../../../components/TextAssistBar";
+import {
+  avatarPickerStyles,
+  expertPresetSrc,
+} from "../../../components/AvatarPicker";
 import ExpertColorPicker from "../../../components/ExpertColorPicker";
 import AgentTrajectoryField from "./AgentTrajectoryField";
 import { apiErrorMessage } from "../../../utils/apiError";
@@ -261,6 +266,8 @@ export default function CreateFromExpertDrawer({
   const [colorPalette, setColorPalette] = useState<string>("rose");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarPresetId, setAvatarPresetId] = useState<string | null>(null);
+  const [avatarPresetTouched, setAvatarPresetTouched] = useState(false);
   const [detailPrompts, setDetailPrompts] = useState<QuickPrompt[] | null>(
     null,
   );
@@ -304,8 +311,10 @@ export default function CreateFromExpertDrawer({
     const defaults = sourceDefaults(source, lang);
     setColorPalette(parseStoredColor(defaults.color) ?? DEFAULT_PALETTE);
     setAvatarFile(null);
+    setAvatarPresetId(null);
+    setAvatarPresetTouched(false);
     setAvatarPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
       return null;
     });
     form.setFieldsValue({
@@ -523,6 +532,17 @@ export default function CreateFromExpertDrawer({
         } catch {
           message.warning(t("experts.avatarUploadLater"));
         }
+      } else if (avatarPresetTouched) {
+        try {
+          await request(`/agents/${body.agent_id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              icon_url: avatarPresetId ? expertPresetSrc(avatarPresetId) : null,
+            }),
+          });
+        } catch {
+          message.warning(t("experts.avatarUploadLater"));
+        }
       }
       if (bwrapToast?.kind === "success") {
         message.success(bwrapToast.text);
@@ -653,6 +673,62 @@ export default function CreateFromExpertDrawer({
 
       <Form form={form} layout="vertical" size="middle">
         <Form.Item
+          label={t("experts.avatar")}
+          className={avatarPickerStyles.formItem}
+        >
+          <ExpertAvatarPicker
+            iconUrl={
+              avatarPreview ??
+              (avatarPresetTouched
+                ? avatarPresetId
+                  ? expertPresetSrc(avatarPresetId)
+                  : null
+                : sourceIcon(source).iconUrl)
+            }
+            iconName={sourceIcon(source).iconName}
+            color={
+              isCuratedPalette(colorPalette)
+                ? expertPaletteColor(colorPalette)
+                : colorPalette
+            }
+            disabled={submitting}
+            onPick={(file) => {
+              setAvatarFile(file);
+              setAvatarPresetId(null);
+              setAvatarPresetTouched(false);
+              setAvatarPreview((prev) => {
+                if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                return URL.createObjectURL(file);
+              });
+            }}
+            onSelectPreset={(presetId) => {
+              setAvatarFile(null);
+              setAvatarPresetId(presetId);
+              setAvatarPresetTouched(true);
+              setAvatarPreview((prev) => {
+                if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                return null;
+              });
+            }}
+            onRemove={
+              avatarFile || avatarPreview
+                ? () => {
+                    setAvatarFile(null);
+                    setAvatarPreview((prev) => {
+                      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                      return null;
+                    });
+                  }
+                : undefined
+            }
+          />
+        </Form.Item>
+
+        <Form.Item label={t("experts.color")} extra={t("experts.colorHint")}>
+          <ExpertColorPicker value={colorPalette} onChange={setColorPalette} />
+        </Form.Item>
+
+        <Form.Item
           name="name"
           label={t("experts.agentName")}
           rules={[{ required: true, message: t("experts.pleaseEnterName") }]}
@@ -691,20 +767,37 @@ export default function CreateFromExpertDrawer({
           <Input placeholder={t("experts.customIdPlaceholder")} allowClear />
         </Form.Item>
 
-        <Form.Item name="description" label={t("experts.agentDescription")}>
-          <Input.TextArea rows={2} />
+        <Form.Item
+          name="description"
+          label={t("experts.agentDescription")}
+          className={styles.textAssistField}
+        >
+          <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} />
         </Form.Item>
+        <TextAssistBar
+          kind="expert.description"
+          getName={() => String(form.getFieldValue("name") ?? "")}
+          getText={() => String(form.getFieldValue("description") ?? "")}
+          onApply={(text) => form.setFieldsValue({ description: text })}
+        />
 
         <Form.Item
           name="welcome_message"
           label={t("experts.welcomeMessageTitle")}
-          extra={t("experts.createWelcomeHint")}
+          tooltip={t("experts.createWelcomeHint")}
+          className={styles.textAssistField}
         >
           <Input.TextArea
-            rows={2}
+            autoSize={{ minRows: 2, maxRows: 5 }}
             placeholder={t("experts.welcomeMessagePlaceholder")}
           />
         </Form.Item>
+        <TextAssistBar
+          kind="expert.welcome_message"
+          getName={() => String(form.getFieldValue("name") ?? "")}
+          getText={() => String(form.getFieldValue("welcome_message") ?? "")}
+          onApply={(text) => form.setFieldsValue({ welcome_message: text })}
+        />
 
         <Collapse
           ghost
@@ -728,41 +821,6 @@ export default function CreateFromExpertDrawer({
             },
           ]}
         />
-
-        <Form.Item label={t("experts.avatar")}>
-          <ExpertAvatarPicker
-            iconUrl={avatarPreview ?? sourceIcon(source).iconUrl}
-            iconName={sourceIcon(source).iconName}
-            color={
-              isCuratedPalette(colorPalette)
-                ? expertPaletteColor(colorPalette)
-                : colorPalette
-            }
-            disabled={submitting}
-            onPick={(file) => {
-              setAvatarFile(file);
-              setAvatarPreview((prev) => {
-                if (prev) URL.revokeObjectURL(prev);
-                return URL.createObjectURL(file);
-              });
-            }}
-            onRemove={
-              avatarPreview
-                ? () => {
-                    setAvatarFile(null);
-                    setAvatarPreview((prev) => {
-                      if (prev) URL.revokeObjectURL(prev);
-                      return null;
-                    });
-                  }
-                : undefined
-            }
-          />
-        </Form.Item>
-
-        <Form.Item label={t("experts.color")} extra={t("experts.colorHint")}>
-          <ExpertColorPicker value={colorPalette} onChange={setColorPalette} />
-        </Form.Item>
 
         <Form.Item
           name="conversation_mode"

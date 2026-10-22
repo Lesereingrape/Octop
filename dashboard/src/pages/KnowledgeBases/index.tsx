@@ -75,6 +75,12 @@ import {
   type KnowledgeDocument,
   type KnowledgeOnnxModel,
 } from "../../api/modules/knowledgeBases";
+import {
+  isUploadedAvatarUrl,
+  KNOWLEDGE_AVATAR_PRESETS,
+  ResourceAvatarPicker,
+  avatarPickerStyles,
+} from "../../components/AvatarPicker";
 import { OctopEmptyMascot } from "../../components/EmptyState";
 import DocumentPreviewCore from "../../components/DocumentPreviewCore";
 import DocumentPreviewLoading from "../../components/DocumentPreviewLoading";
@@ -82,6 +88,7 @@ import Markdown from "../../components/Markdown";
 import StreamSetupGuide from "../../components/StreamSetupGuide/StreamSetupGuide";
 import { CopyableResourceId } from "../../components/CopyableResourceId";
 import { ResourceVisibilityFields } from "../../components/ResourceVisibilityFields";
+import { TextAssistBar } from "../../components/TextAssistBar";
 import type { ResourceVisibilityMode } from "../../api/modules/userGroups";
 import { useCardTableView } from "../../hooks/useCardTableView";
 import { useHorizontalResize } from "../../hooks/useHorizontalResize";
@@ -105,7 +112,7 @@ import {
 } from "./mdOutline";
 import { setPendingAttachKnowledgeBaseId } from "../Chat/utils/pendingAttachKnowledgeBase";
 import skillStyles from "../Agent/Skills/index.module.less";
-import { KNOWLEDGE_ICON_NAMES, knowledgeIconForName } from "./knowledgeIcons";
+import { KnowledgeBaseAvatar } from "./knowledgeIcons";
 import {
   buildKnowledgeFileTree,
   isDirectKnowledgeChild,
@@ -137,6 +144,7 @@ type BaseFormValues = {
   name: string;
   description?: string;
   icon_name?: string;
+  icon_url?: string;
   max_documents?: number;
 };
 
@@ -225,41 +233,6 @@ function DocumentFormatIcon({
     >
       <Icon size={size} strokeWidth={2} />
     </span>
-  );
-}
-
-function KnowledgeIconPicker({
-  value,
-  onChange,
-}: {
-  value?: string;
-  onChange?: (value?: string) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className={styles.iconPicker}>
-      {KNOWLEDGE_ICON_NAMES.map((name) => {
-        const selected = value === name;
-        return (
-          <button
-            key={name}
-            type="button"
-            className={`${styles.iconPickerItem}${
-              selected ? ` ${styles.iconPickerItemActive}` : ""
-            }`}
-            onClick={() => onChange?.(selected ? undefined : name)}
-            title={t(`knowledgeBases.iconLabels.${name}`)}
-          >
-            <span className={styles.iconPickerGlyph}>
-              {knowledgeIconForName(name, 18)}
-            </span>
-            <span className={styles.iconPickerLabel}>
-              {t(`knowledgeBases.iconLabels.${name}`)}
-            </span>
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -673,6 +646,10 @@ export default function KnowledgeBasesPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [previewOpen, previewAsMarkdown]);
   const [baseForm] = Form.useForm<BaseFormValues>();
+  const iconName = Form.useWatch("icon_name", baseForm);
+  const iconUrl = Form.useWatch("icon_url", baseForm);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [defaultOpenChecked, setDefaultOpenChecked] = useState(false);
   const [baseVisibility, setBaseVisibility] =
     useState<ResourceVisibilityMode>("owner");
@@ -1065,10 +1042,12 @@ export default function KnowledgeBasesPage() {
       );
       return;
     }
+    setPendingAvatarFile(null);
     baseForm.setFieldsValue({
       name: "",
       description: "",
       icon_name: "book-open",
+      icon_url: "",
       max_documents: 100,
     });
     setDefaultOpenChecked(false);
@@ -1079,10 +1058,12 @@ export default function KnowledgeBasesPage() {
   };
 
   const openEdit = (base: KnowledgeBase) => {
+    setPendingAvatarFile(null);
     baseForm.setFieldsValue({
       name: base.name,
       description: base.description,
       icon_name: base.icon_name || undefined,
+      icon_url: base.icon_url || "",
       max_documents: base.max_documents,
     });
     setDefaultOpenChecked(base.default_open);
@@ -1100,16 +1081,34 @@ export default function KnowledgeBasesPage() {
     }
     const payload = {
       ...values,
+      // Blob previews are local-only; upload runs after create/update.
+      icon_url: pendingAvatarFile
+        ? ""
+        : values.icon_url?.startsWith("blob:")
+        ? ""
+        : values.icon_url?.trim() || "",
       default_open: defaultOpenChecked,
       shared: baseVisibility !== "owner",
       visibility: baseVisibility,
       group_ids: baseGroupIds,
     };
     try {
-      const next = editingBaseId
+      let next = editingBaseId
         ? await knowledgeBasesApi.update(editingBaseId, payload)
         : await knowledgeBasesApi.create(payload);
+      if (pendingAvatarFile) {
+        try {
+          const uploaded = await knowledgeBasesApi.uploadAvatar(
+            next.id,
+            pendingAvatarFile,
+          );
+          next = { ...next, icon_url: uploaded.icon_url };
+        } catch {
+          message.warning(t("knowledgeBases.avatarUploadLater"));
+        }
+      }
       setBaseDrawerOpen(false);
+      setPendingAvatarFile(null);
       await loadBases();
       await loadDetail(next.id);
       if (isMobile) setMobilePane("detail");
@@ -2135,7 +2134,11 @@ export default function KnowledgeBasesPage() {
                       >
                         <div className={styles.listName}>
                           <span className={styles.listIcon}>
-                            {knowledgeIconForName(base.icon_name, 18)}
+                            <KnowledgeBaseAvatar
+                              iconUrl={base.icon_url}
+                              iconName={base.icon_name}
+                              size={18}
+                            />
                           </span>
                           <Tooltip title={base.name} placement="topLeft">
                             <span className={styles.listNameText}>
@@ -3236,6 +3239,108 @@ export default function KnowledgeBasesPage() {
           className={styles.baseForm}
           requiredMark={false}
         >
+          <Form.Item name="icon_name" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item name="icon_url" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label={t("knowledgeBases.icon")}
+            className={avatarPickerStyles.formItem}
+          >
+            <ResourceAvatarPicker
+              imageUrl={
+                iconUrl?.trim() &&
+                (isUploadedAvatarUrl(iconUrl) ||
+                  Boolean(pendingAvatarFile) ||
+                  iconUrl.startsWith("blob:") ||
+                  /^https?:\/\//i.test(iconUrl))
+                  ? iconUrl
+                  : null
+              }
+              presetId={iconName || null}
+              presets={KNOWLEDGE_AVATAR_PRESETS}
+              disabled={avatarBusy}
+              onPick={(file) => {
+                if (editingBaseId) {
+                  void (async () => {
+                    setAvatarBusy(true);
+                    try {
+                      const result = await knowledgeBasesApi.uploadAvatar(
+                        editingBaseId,
+                        file,
+                      );
+                      baseForm.setFieldsValue({ icon_url: result.icon_url });
+                      setPendingAvatarFile(null);
+                    } catch (err) {
+                      message.error(
+                        apiErrorMessage(
+                          err,
+                          t("experts.avatarUploadFailed"),
+                          t,
+                        ),
+                      );
+                      throw err;
+                    } finally {
+                      setAvatarBusy(false);
+                    }
+                  })();
+                  return;
+                }
+                setPendingAvatarFile(file);
+                baseForm.setFieldsValue({
+                  icon_url: URL.createObjectURL(file),
+                });
+              }}
+              onSelectPreset={(presetId) => {
+                void (async () => {
+                  setPendingAvatarFile(null);
+                  const nextName = presetId ?? "book-open";
+                  if (editingBaseId && isUploadedAvatarUrl(iconUrl)) {
+                    setAvatarBusy(true);
+                    try {
+                      await knowledgeBasesApi.deleteAvatar(editingBaseId);
+                    } catch {
+                      // Preset still applied locally / on save.
+                    } finally {
+                      setAvatarBusy(false);
+                    }
+                  }
+                  baseForm.setFieldsValue({
+                    icon_name: nextName,
+                    icon_url: "",
+                  });
+                })();
+              }}
+              onRemove={
+                iconUrl || pendingAvatarFile
+                  ? () => {
+                      void (async () => {
+                        setPendingAvatarFile(null);
+                        if (editingBaseId && isUploadedAvatarUrl(iconUrl)) {
+                          setAvatarBusy(true);
+                          try {
+                            await knowledgeBasesApi.deleteAvatar(editingBaseId);
+                          } catch (err) {
+                            message.error(
+                              apiErrorMessage(
+                                err,
+                                t("experts.avatarRemoveFailed"),
+                                t,
+                              ),
+                            );
+                          } finally {
+                            setAvatarBusy(false);
+                          }
+                        }
+                        baseForm.setFieldsValue({ icon_url: "" });
+                      })();
+                    }
+                  : undefined
+              }
+            />
+          </Form.Item>
           <Form.Item
             name="name"
             label={t("knowledgeBases.name")}
@@ -3249,17 +3354,25 @@ export default function KnowledgeBasesPage() {
           >
             <Input autoFocus maxLength={200} />
           </Form.Item>
-          <Form.Item name="description" label={t("knowledgeBases.description")}>
-            <Input.TextArea
-              autoSize={{ minRows: 2, maxRows: 5 }}
-              maxLength={2000}
-              showCount
-            />
+          <Form.Item
+            name="description"
+            label={t("knowledgeBases.description")}
+            className={styles.textAssistField}
+          >
+            <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} />
           </Form.Item>
+          <TextAssistBar
+            kind="knowledge_base.description"
+            getName={() => String(baseForm.getFieldValue("name") ?? "")}
+            getText={() => String(baseForm.getFieldValue("description") ?? "")}
+            onApply={(text) =>
+              baseForm.setFieldsValue({ description: text.slice(0, 2000) })
+            }
+          />
           <Form.Item
             name="max_documents"
             label={t("knowledgeBases.maxDocuments")}
-            extra={t("knowledgeBases.maxDocumentsHint")}
+            tooltip={t("knowledgeBases.maxDocumentsHint")}
           >
             <InputNumber
               min={0}
@@ -3268,9 +3381,6 @@ export default function KnowledgeBasesPage() {
               precision={0}
               style={{ width: "100%" }}
             />
-          </Form.Item>
-          <Form.Item name="icon_name" label={t("knowledgeBases.icon")}>
-            <KnowledgeIconPicker />
           </Form.Item>
           <div className={styles.formOptions}>
             <div className={styles.formOptionRow}>
@@ -3288,7 +3398,7 @@ export default function KnowledgeBasesPage() {
                 onChange={setDefaultOpenChecked}
               />
             </div>
-            <div className={styles.formOptionRow}>
+            <div className={styles.formOptionRowVisibility}>
               <div className={styles.formOptionCopy}>
                 <span className={styles.switchLabel}>
                   {t("resourceVisibility.label")}
